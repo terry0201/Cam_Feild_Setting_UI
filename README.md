@@ -10,3 +10,6 @@ an UI that can do
 
 ## Contributors
 [詹家欣 Chia-Hsin Chan](https://sites.google.com/site/terry0201/)、
+
+## Meeting markdown document
+[link](https://hackmd.io/1zHg7h21TXWCPbuK0SQ4MA?both)
