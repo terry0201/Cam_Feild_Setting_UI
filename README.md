@@ -6,6 +6,8 @@ an UI that can do
 
 ## Calibration
 > python realtime.py
+
+
 每三秒擷取一張frame，且用累計下來的frame去做calibration
 
 ## Reference
