@@ -4,6 +4,10 @@ an UI that can do
 2. camera-to-real_world projection by perspective tramsform
 3. polygon painting on camrea view
 
+## Calibration
+> python realtime.py
+每三秒擷取一張frame，且用累計下來的frame去做calibration
+
 ## Reference
 - [PySide2教學](https://medium.com/bucketing/pyside2-pyqt-tutorial-3c2be590bc6a)
 - [OpenCV Camera Calibration](https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_calib3d/py_calibration/py_calibration.html)
