@@ -1,0 +1,17 @@
+<annotation>
+<filename>B001.png</filename>
+<folder>NH</folder>
+<source><sourceImage>The MIT-CSAIL database of objects and scenes</sourceImage><sourceAnnotation>LabelMe Webtool</sourceAnnotation></source>
+<object>
+    <name>motorcyclewaitingzone</name>
+    <date>19-Aug-2019 06:59:57</date>
+    <attributes></attributes>
+    <id>0</id>
+    <polygon>
+        <pt><x>450</x><y>0</y></pt>
+        <pt><x>1920</x><y>0</y></pt>
+        <pt><x>1920</x><y>1080</y></pt>
+        <pt><x>450</x><y>1080</y></pt>
+     </polygon>
+</object>
+</annotation>
