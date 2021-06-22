@@ -2,23 +2,14 @@ import cv2
 from time import sleep,time
 import os
 import numpy as np
-
-def cal_reproject_error(imgpoints,objpoints,rvecs,tvecs,mtx,dist):
-    mean_error = 0
-    for i in range(len(objpoints)):
-        imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
-        error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2)/len(imgpoints2)
-        mean_error += error
-    print( "calibrate finished, loss: {}".format(mean_error/len(objpoints)) )
-
+from utils import cal_reproject_error,dim_statistic,dim_stat_xy,sliding_window_calibrate
 
 def capture(frame_count=30):
     counter=0
     corner_x = 7   # pattern is 7*7
     corner_y = 7
     objp = np.zeros((corner_x*corner_y, 3), np.float32)
-    objp[:, :2] = np.mgrid[0:corner_x, 0:corner_y].T.reshape(-1, 2)
-    zero_arr = np.zeros(1)
+    objp[:, :2] = np.mgrid[0:corner_x, 0:corner_y].T.reshape(-1, 2)#[0 0 0],[1 0 0],[2 0 0]........[6 6 0]
 
     # Arrays to store object points and image points from all the images.
     objpoints = [] # 3d points in real world space
@@ -35,34 +26,34 @@ def capture(frame_count=30):
         if cv2.waitKey(1) & 0xFF == ord('q'): # 若按下 q 鍵則離開迴圈
             break
         if cur_time - start_time > 3:
-            #start_time=cur_time
             if ret:
-                print("capture success")
-                counter += 1
+                #print("capture success")
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 ret, corners = cv2.findChessboardCorners(gray, (corner_x, corner_y), None)
                 if ret == True:
-                    print("chessboard is founded")
+                    counter += 1
+                    print("capture success and chessboard is founded")
                     objpoints.append(objp)
-                    corners_with_three_d = np.c_[corners , np.zeros((49, 1, 1))]  # append zero to last dimension
-                    imgpoints.append(corners)   # only one point?
-                    #above part for find chessboard
+                    #corners_with_three_d = np.c_[corners , np.zeros((49, 1, 1))]  # append zero to last dimension
+                    imgpoints.append(corners)  
+                    #above part for finding chessboard
                     img_size = (frame.shape[1], frame.shape[0])
-                    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_size, None, None)
-                    Vr = np.array(rvecs)
-                    Tr = np.array(tvecs)
-                    extrinsics = np.concatenate((Vr, Tr), axis=1).reshape(-1, 6)
 
+                    if counter>10:  #choosing when to do the sliding window
+                        ret, mtx, dist, rvecs, tvecs, imgpoints, objpoints = sliding_window_calibrate(objpoints, imgpoints, img_size, counter, frame_count)
+                    else:
+                        ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_size, None, None)
 
                     #following part are used for undistort
 
-                    h,  w = frame.shape[:2]
-                    newcameramtx, roi=cv2.getOptimalNewCameraMatrix(mtx,dist,(w,h),1,(w,h))
                     cal_reproject_error(imgpoints,objpoints,rvecs,tvecs,mtx,dist)
-
-
-
-                if counter == frame_count:
+                    #if counter>1:
+                        #dim_statistic(imgpoints, frame.shape[1], frame.shape[0])
+                    #    dim_stat_xy(imgpoints, frame.shape[1], frame.shape[0])
+                else:
+                    print("No chessboard is found in this frame")
+                print('\n')
+                if counter == frame_count:  #meet the number of frames defined before
                     cap.release()
                     cv2.destroyAllWindows()
                     break
@@ -73,7 +64,6 @@ def capture(frame_count=30):
 
 if __name__ == '__main__':
   capture()
-  
   cv2.destroyAllWindows()
 
 
