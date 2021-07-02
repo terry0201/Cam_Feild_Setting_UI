@@ -2,9 +2,9 @@ import cv2
 from time import sleep,time
 import os
 import numpy as np
-from utils import cal_reproject_error,dim_statistic,dim_stat_xy,sliding_window_calibrate
+from utils import cal_reproject_error, dim_statistic, dim_stat_xy, sliding_window_calibrate, scatter_hist
 
-def capture(frame_count=30):
+def capture(frame_count=20):
     counter=0
     corner_x = 7   # pattern is 7*7
     corner_y = 7
@@ -26,13 +26,12 @@ def capture(frame_count=30):
         if cv2.waitKey(1) & 0xFF == ord('q'): # 若按下 q 鍵則離開迴圈
             break
         if cur_time - start_time > 3:
-            if ret:
-                #print("capture success")
+            if ret: #capture success
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 ret, corners = cv2.findChessboardCorners(gray, (corner_x, corner_y), None)
                 if ret == True:
                     counter += 1
-                    print("capture success and chessboard is founded")
+                    print("capture success and chessboard is founded, {}/{}".format(counter,frame_count))
                     objpoints.append(objp)
                     #corners_with_three_d = np.c_[corners , np.zeros((49, 1, 1))]  # append zero to last dimension
                     imgpoints.append(corners)  
@@ -40,13 +39,12 @@ def capture(frame_count=30):
                     img_size = (frame.shape[1], frame.shape[0])
 
                     if counter>10:  #choosing when to do the sliding window
-                        ret, mtx, dist, rvecs, tvecs, imgpoints, objpoints = sliding_window_calibrate(objpoints, imgpoints, img_size, counter, frame_count)
+                        ret, mtx, dist, rvecs, tvecs, imgpoints, objpoints, err = sliding_window_calibrate(objpoints, imgpoints, img_size, counter, frame_count)
                     else:
                         ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_size, None, None)
+                        err = cal_reproject_error(imgpoints,objpoints,rvecs,tvecs,mtx,dist)
 
-                    #following part are used for undistort
-
-                    cal_reproject_error(imgpoints,objpoints,rvecs,tvecs,mtx,dist)
+                    print("error:{}".format(err))
                     #if counter>1:
                         #dim_statistic(imgpoints, frame.shape[1], frame.shape[0])
                     #    dim_stat_xy(imgpoints, frame.shape[1], frame.shape[0])
