@@ -44,8 +44,8 @@ def dim_statistic(imgpoints,img_width,img_height):  #count the points with respe
 
 def dim_stat_xy(imgpoints, img_width, img_height, div_num=10):    #project the points into x and y axis and do the further counting. Counting the distribution among x and y axis
     pts = parse_imgpoints(imgpoints)
-    x_list , y_list = np.zeros(shape=div_num, dtype=np.int8).tolist() , np.zeros(shape=div_num, dtype=np.int8).tolist()
-    width_per_div, height_per_div = ceil(img_width/div_num) , ceil(img_height/div_num)
+    x_list, y_list = np.zeros(shape=div_num, dtype=np.int8).tolist(), np.zeros(shape=div_num, dtype=np.int8).tolist()
+    width_per_div, height_per_div = ceil(img_width/div_num), ceil(img_height/div_num)
     for item in pts:
         x, y = item
         x_list[int(x/width_per_div)] += 1
@@ -60,22 +60,22 @@ def sliding_window_calibrate(objpoints, imgpoints, img_size, cur_count, total, e
                                                                                          img_size, None, None)  
     packed_ori = ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints[:len(objpoints)-1], imgpoints[:len(imgpoints)-1], #using 0~last-1
                                                                      img_size, None, None)   
-    ori = cal_reproject_error(imgpoints[:len(imgpoints)-1],objpoints[:len(objpoints)-1],rvecs,tvecs,mtx,dist)
-    slided = cal_reproject_error(imgpoints[:],objpoints[:],rvecs_tmp,tvecs_tmp,mtx_tmp,dist_tmp)
+    ori = cal_reproject_error(imgpoints[:len(imgpoints)-1], objpoints[:len(objpoints)-1], rvecs, tvecs, mtx, dist)   #calculate the loss of original dataset
+    slided = cal_reproject_error(imgpoints[:], objpoints[:], rvecs_tmp, tvecs_tmp, mtx_tmp, dist_tmp)                #calculate the loss of original dataset + current frame
 
     if ori < slided:
         print('new data doesn\'t help, eliminate it')
-        return packed_ori + (imgpoints[:len(imgpoints)-1], objpoints[:len(objpoints)-1], ori)
+        return packed_ori + (imgpoints[:len(imgpoints)-1], objpoints[:len(objpoints)-1], ori)   #also return the 'new' dataset that will be used later
     else:
         print("new data helps, add it to dataset")
-        return packed_tmp + (imgpoints[:], objpoints[:], slided)
+        return packed_tmp + (imgpoints[:], objpoints[:], slided)    #also return the 'new' dataset that will be used later
     #return ret, mtx, dist, rvecs, tvecs
 
 
 def scatter_hist(imgpoints, _width, _height, inverse=True): #draw the scatter graph using imgpoints
     pt = parse_imgpoints(imgpoints)
-    x=[]
-    y=[]
+    x = []
+    y = []
     for item in pt:
         _x, _y = item
         x.append(_x)
@@ -93,15 +93,15 @@ def scatter_hist(imgpoints, _width, _height, inverse=True): #draw the scatter gr
     # start with a square Figure
     fig = plt.figure(figsize=(8, 8))
 
-    ax = fig.add_axes(rect_scatter,xlim=(0,width),ylim=(0,height))     #axe is a sub-area in figure.
+    ax = fig.add_axes(rect_scatter,xlim=(0, width),ylim=(0, height))     #axe is a sub-area in figure.
     ax_histx = fig.add_axes(rect_histx, sharex=ax)
     ax_histy = fig.add_axes(rect_histy, sharey=ax)
 
     ax_histx.tick_params(axis="x", labelbottom=False)
     ax_histy.tick_params(axis="y", labelleft=False)
 
-    ax.set_xlim(0,_width)
-    ax.set_ylim(0,_height)
+    ax.set_xlim(0, _width)
+    ax.set_ylim(0, _height)
     if inverse:     #due to the different coordinate between images and 2-D coordinate(mainly on Y axis), we have to inverse y axis to get the correct result
         ax.invert_yaxis()
     # the scatter plot:

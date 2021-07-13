@@ -1,6 +1,5 @@
 import cv2
-from time import sleep,time
-import os
+from time import time
 import numpy as np
 from utils import cal_reproject_error, sliding_window_calibrate, scatter_hist
 
@@ -30,12 +29,11 @@ def capture(frame_count=20, slide_threshold=10):        #frame_counter=> how man
         if cur_time-start_time > 3:
             if ret: #capture success
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                ret, corners = cv2.findChessboardCorners(gray, (corner_x, corner_y), None)
-                if ret == True:
+                ret, corners = cv2.findChessboardCorners(gray, (corner_x, corner_y), None)  #find if the image have chessboard inside
+                if ret == True: #chessboard is found in this frame
                     counter += 1
                     print("capture success and chessboard is founded, {}/{}".format(counter,frame_count))
                     objpoints.append(objp)
-                    #corners_with_three_d = np.c_[corners , np.zeros((49, 1, 1))]  # append zero to last dimension
                     imgpoints.append(corners)  
                     #above part for finding chessboard
                     _width=frame.shape[1]
@@ -54,13 +52,11 @@ def capture(frame_count=20, slide_threshold=10):        #frame_counter=> how man
 
                 print('\n')
                 if counter == frame_count:  #meet the number of frames defined in the begining
-                    cap.release()
+                    cap.release()           #release the camera
                     cv2.destroyAllWindows()
                     break
             start_time=cur_time
             print("a frame will be captured in three seconds")
-    cap.release()
-    cv2.destroyAllWindows()
     scatter_hist(imgpoints, _width, _height)
 
 
