@@ -400,7 +400,7 @@ class Ui_MainWindow(object):
         tree.write(self.full_xml_path, encoding="utf-8")
         print(f'save data to: [{self.full_xml_path}]')
 
-        if self.matrix_pix_to_cm:
+        if self.matrix_pix_to_cm is not None:
             np.save(self.full_pic_path.rsplit('.')[0] + '.npy', self.matrix_pix_to_cm)
             print(f'save transfrom matrix to: [{self.full_pic_path.rsplit(".")[0] + ".npy"}]')
 
