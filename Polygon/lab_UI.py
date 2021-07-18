@@ -495,13 +495,15 @@ class Ui_MainWindow(object):
 
         print(int(width)*f, int(height)*f)
         resized = cv2.resize(result, None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
-        attr *= f
         
-        cv2.line(resized, tuple(attr[0]), tuple(attr[1]), (255, 0, 0), 3)
-        cv2.line(resized, tuple(attr[1]), tuple(attr[2]), (255, 0, 0), 3)
-        cv2.line(resized, tuple(attr[2]), tuple(attr[3]), (255, 0, 0), 3)
-        cv2.line(resized, tuple(attr[3]), tuple(attr[0]), (255, 0, 0), 3)
-
+	attr *= f
+        p = attr.astype(int)
+	
+        cv2.line(resized, tuple(p[0]), tuple(p[1]), (255, 0, 0), 3)
+        cv2.line(resized, tuple(p[1]), tuple(p[2]), (255, 0, 0), 3)
+        cv2.line(resized, tuple(p[2]), tuple(p[3]), (255, 0, 0), 3)
+        cv2.line(resized, tuple(p[3]), tuple(p[0]), (255, 0, 0), 3)
+	
         cv2.imshow('transform', resized)
         cv2.moveWindow('transform', 200, 200)
         cv2.waitKey(0)
