@@ -9,14 +9,18 @@ an UI that can do
 
 每三秒擷取一張frame，且用累計下來的frame去做calibration
 
-## polygon
+## GUI
 > `python lab_main.py`
-- 完成: 讀檔、存檔(picture/ xml file)、新增資料(由於繪圖功能尚未完成，按下 add row 就會跳過繪圖，直接到增加屬性的步驟)
-- TODO: Polygon 相關功能
+- 完成: 讀檔、存檔、新增 | 編輯 | 刪除 多邊形、transform、多邊形 <-> table 雙向 Highlight
+- TODO: Camera 相關功能
 
-## transform
-> `python3 main.py`
-- [demo video](https://drive.google.com/file/d/1grmb-mPa8ZBuAXVyfZ3c7Ut5CvvRO44C/view?usp=sharing)
+### env:
+> `pip install PySide2`  
+> `pip install opencv-python`  
+> `pip install Shapely`  
+> `pip install numpy`
+
+備註: .xml(多邊形資料) / .npy(transform 矩陣) 會儲存在與圖片相同資料夾底下
 
 ## Reference
 - [PySide2教學](https://medium.com/bucketing/pyside2-pyqt-tutorial-3c2be590bc6a)
