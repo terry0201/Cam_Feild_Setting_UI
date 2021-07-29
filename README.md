@@ -11,14 +11,14 @@ an UI that can do
 
 ## GUI
 > `python lab_main.py`
-- 完成: 讀檔、存檔、新增 | 編輯 | 刪除 多邊形、transform、多邊形 <-> table 雙向 Highlight、
+- 完成: 讀檔、存檔、新增 | 編輯 | 刪除 多邊形、transform、多邊形 <-> table 雙向 Highlight
 - TODO: Camera 相關功能
 
 ### env:
 > `pip install PySide2`  
 > `pip install opencv-python`  
 > `pip install Shapely`  
-> `pip install numpy`
+> `pip install numpy`  
 > `pip install matplotlib`
 
 備註: .xml(多邊形資料) / .npy(transform 矩陣) 會儲存在與圖片相同資料夾底下
