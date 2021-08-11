@@ -2,17 +2,20 @@ import sys
 from PySide2.QtWidgets import QWidget, QPushButton, QApplication, QAction, QLineEdit, QLabel, QFormLayout, QDialog, QComboBox, QGridLayout
 from PySide2.QtCore import QRect, QCoreApplication
 from PySide2.QtGui import QFont
+from PySide2.QtWidgets import *
+from PySide2.QtCore import *
 
 
 class QuestionDialog(QDialog):
-    def __init__(self):
+    def __init__(self, basicFontSize):
         super().__init__()
         COMBO_BOX_ITEM = ['', 'TRANS', 'Tree', 'Car']
-
-        self.setFont(QFont('Arial', 18))
-        self.setGeometry(QRect(700, 400, 400, 180))
-
+        font = QFont('Arial', basicFontSize)
+        # self.setFixedSize(400, 180)
+        
         # --------------------------
+        self.LabelName = QLabel('Name:')
+        self.LabelAttr = QLabel('Attribute:')
         
         self.A1 = QLineEdit(self)
         self.A2 = QLineEdit(self)
@@ -24,43 +27,63 @@ class QuestionDialog(QDialog):
         # --------- Button ---------
         
         self.OK = QPushButton('OK', self)
-        self.OK.setGeometry(QRect(110, 120, 100, 40))
+        # self.OK.setFixedSize(100, 40)
 
         self.Cancel = QPushButton('Cancel', self)
-        self.Cancel.setGeometry(QRect(280, 120, 100, 40))
+        # self.Cancel.setFixedSize(100, 40)
 
         self.OK.clicked.connect(self.accept)
         self.Cancel.clicked.connect(self.reject)
-
+        
+        self.A1.setFont(font)
+        self.A2.setFont(font)
+        self.Q1_Box.setFont(font)
+        self.OK.setFont(font)
+        self.Cancel.setFont(font)
+        self.LabelName.setFont(font)
+        self.LabelAttr.setFont(font)
         #!################################################################
-        UPPER_REGION = QWidget(self)
-        UPPER_REGION.setGeometry(QRect(0, 0, 400, 100))
+        self.groupBoxInputs = QGroupBox()
+        self.groupBoxInputs.setStyleSheet("QGroupBox{ border: 0px ; }")
 
-        gridLayout = QGridLayout(UPPER_REGION)
-        # gridLayout.setGeometry(QRect(0, 0, 400, 120))
-        # UPPER_REGION.setLayout(gridLayout)
+        g_layout = QGridLayout()
+        g_layout.addWidget(self.LabelName, 0, 0)
+        g_layout.addWidget(self.A1, 0, 1)
+        g_layout.addWidget(self.Q1_Box, 0, 2)
+        g_layout.addWidget(self.LabelAttr, 1, 0)
+        g_layout.addWidget(self.A2, 1, 1, 1, 2)
 
-        ROW = 0
-        gridLayout.addWidget(QLabel('Name:'), ROW, 0)
-        gridLayout.addWidget(self.A1, ROW, 1)
-        gridLayout.addWidget(self.Q1_Box, ROW, 2)
+        self.groupBoxInputs.setLayout(g_layout)
 
-        ROW = 1
-        gridLayout.addWidget(QLabel('Attribute:'), ROW, 0)
-        gridLayout.addWidget(self.A2, ROW, 1, 1, -1)
+        self.groupBoxBtns = QGroupBox()
+        self.groupBoxBtns.setStyleSheet("QGroupBox{ border: 0px; }")
+        # self.groupBoxBtns.setFixedWidth(self.groupBoxBtns.width()//2)
 
-        # gridLayout.addWidget(self.OK, 2, 1)
-        # gridLayout.addWidget(self.Cancel, 2, 2)
+        forSpacing1 = QWidget()
+        forSpacing2 = QWidget()
+        g2_layout = QGridLayout()
+        g2_layout.addWidget(forSpacing1, 0, 0)
+        g2_layout.addWidget(self.OK, 0, 1)
+        g2_layout.addWidget(self.Cancel, 0, 2)
+        g2_layout.addWidget(forSpacing2, 0, 3)
+        self.groupBoxBtns.setLayout(g2_layout)
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.groupBoxInputs)
+        vbox.addWidget(self.groupBoxBtns)
+        self.setLayout(vbox)
+
         #!################################################################
 
     def getInputs(self):
         return (self.A1.text(), self.A2.text())
-
+    
 def main():
     app = QApplication(sys.argv)
 
-    ex = QuestionDialog()
+    ex = QuestionDialog(16)
     a = ex.show()
+    
     if a == QDialog.Accepted:
         print('accepted!')
     elif a == QDialog.Rejected:
