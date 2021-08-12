@@ -3,25 +3,28 @@ import numpy as np
 from math import ceil
 import matplotlib.pyplot as plt
 
-
 def cal_reproject_error(imgpoints, objpoints, rvecs, tvecs, mtx, dist):  #calculate the reprojection error
     mean_error = 0
     for i in range(len(objpoints)):
         imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
         error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2)/len(imgpoints2)
         mean_error += error
-    #print( "total error: {}".format(mean_error/len(objpoints)) )
+    #print( "total error: {}".format(mean_error/len(objpoints)))
     return mean_error/len(objpoints)
-
 
 """
 21
 34
 """
+
 def parse_imgpoints(imgpoints):     #sub_function used by dimension statistic
+    # print("before:",np.array(imgpoints).shape)
     pts = np.array(imgpoints).squeeze(axis=None)
+    # print("after:",pts.shape)
     a, b, _ = pts.shape
     pts = np.resize(pts,(a*b,2)).tolist()    #resize to the format we want
+    # print(np.array(pts))
+    # print(type(pts))
     return pts
 
 def dim_statistic(imgpoints,img_width,img_height):  #count the points with respect to four dimension
@@ -30,7 +33,7 @@ def dim_statistic(imgpoints,img_width,img_height):  #count the points with respe
     dim_list = np.zeros(shape=4, dtype=np.int8).tolist()   #divide into four dimension
     for item in pts:
         x,y = item
-        if x > half_width and y > half_height:  #dim4
+        if x > half_width and y > half_height:   #dim4
             dim_list[3] += 1
         elif x < half_width and y > half_height: #dim3
             dim_list[2] += 1
@@ -71,20 +74,93 @@ def sliding_window_calibrate(objpoints, imgpoints, img_size, cur_count, total, e
         return packed_tmp + (imgpoints[:], objpoints[:], slided)    #also return the 'new' dataset that will be used later
     #return ret, mtx, dist, rvecs, tvecs
 
+def calculate_the_worst(objpoints, imgpoints, img_size, cur_count, total, eliminate=False):
+
+    err = None
+    if len(objpoints)>10 and len(imgpoints)>10:
+        packed_tmp = ret_tmp, mtx_tmp, dist_tmp, rvecs_tmp, tvecs_tmp = cv2.calibrateCamera(objpoints[:], imgpoints[:], #using 1~last as new dataset, eliminate the first entry
+                                                                                            img_size, None, None)
+        all_error=[]
+        for i in range(len(objpoints)):
+            imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs_tmp[i], tvecs_tmp[i], mtx_tmp, dist_tmp)
+            error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2)/len(imgpoints2)
+            all_error.append(error)
+
+        err = sum(all_error)/len(all_error)
+        objpoints.pop(all_error.index(max(all_error)))
+        imgpoints.pop(all_error.index(max(all_error)))
+
+    return err,imgpoints[:],objpoints[:]
+
+def no_sample_block(_width, _height, imgpoints):
+    pts = parse_imgpoints(imgpoints)
+    dot_num=len(pts)
+    a=70
+    block_num_x = _width//a   #取整數
+    block_num_y = _height//a
+    block_num = block_num_x*block_num_y #x*y=9*7
+    print('(width, height)=', '(', _width,  ',',  _height, ')')
+    print('block size=', a, '*', a)
+    print('block_num=',block_num)
+    block=[]
+    for k in range(block_num_y):
+        for l in range(block_num_x):
+            if l == block_num_x-1 and k == block_num_y-1:
+                block.append([l*a, _width, k*a, _height])
+            elif l == block_num_x-1:
+                block.append([l*a, _width, k*a, (k+1)*a])
+            elif k == block_num_y-1:
+                block.append([l*a, (l+1)*a, k*a, _height])
+            else:
+                block.append([l*a, (l+1)*a, k*a, (k+1)*a ]) ##append([x左,x右,y上,y下])
+    #print('block[x左,x右,y上,y下]: ', block)    #由左至右由上至下
+
+    nosample=[]
+    for m in range(block_num):
+        c=0     #count
+        for n in range(dot_num):
+            if pts[n][0]>=block[m][0] and pts[n][0]<=block[m][1] and pts[n][1]>=block[m][2] and pts[n][1]<=block[m][3]:   #a[n,0]=x值 a[n,1]=y值
+                break
+            else:
+                c+=1
+        if c == dot_num:    #no dot in this block
+            nosample.append(block[m])
+        else:
+            continue
+    
+    print('nosample block[x左,x右,y上,y下]: ', nosample)
+    print('number of nosample block: ', len(nosample)) 
 
 def scatter_hist(imgpoints, _width, _height, inverse=True): #draw the scatter graph using imgpoints
     pt = parse_imgpoints(imgpoints)
     x = []
     y = []
+    values = []
+    
+    index_before = 0
+    index_after = 49
+    center_point = []
+
     for item in pt:
         _x, _y = item
         x.append(_x)
         y.append(_y)
+    
+    for i in range(int(len(pt)/49)):
+        center_point.append([np.mean(np.array(pt[index_before:index_after])[:,0]),np.mean(np.array(pt[index_before:index_after])[:,1])])
+        index_before+=49
+        index_after+=49
+
+    print("資料中心點座標:(%.2f,%.2f)" %(np.mean(np.array(center_point)[:,0]),np.mean(np.array(center_point)[:,1])))
+    #print("資料標準差:(%.2f,%.2f)" %(np.std(np.array(center_point)[:,0]),np.std(np.array(center_point)[:,1])))
+    #print("資料變異數:(%.2f,%.2f)" %(np.var(np.array(center_point)[:,0]),np.var(np.array(center_point)[:,1])))
+
+        #我做的
+        # values.append((_x**2)+(_y**2)**0.5)
 
     left, width = 0.1, 0.65
     bottom, height = 0.1, 0.65
     spacing = 0.005
-
 
     rect_scatter = [left, bottom, width, height]
     rect_histx = [left, bottom+height+spacing, width, 0.2]
@@ -92,7 +168,6 @@ def scatter_hist(imgpoints, _width, _height, inverse=True): #draw the scatter gr
 
     # start with a square Figure
     fig = plt.figure(figsize=(8, 8))
-
     ax = fig.add_axes(rect_scatter,xlim=(0, width),ylim=(0, height))     #axe is a sub-area in figure.
     ax_histx = fig.add_axes(rect_histx, sharex=ax)
     ax_histy = fig.add_axes(rect_histy, sharey=ax)
@@ -116,3 +191,5 @@ def scatter_hist(imgpoints, _width, _height, inverse=True): #draw the scatter gr
     ax_histx.hist(x, bins=bins)
     ax_histy.hist(y, bins=bins, orientation='horizontal')
     plt.show()
+
+

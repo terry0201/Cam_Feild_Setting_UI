@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-# Form generated from reading UI file 'project changed.ui'
+# Form generated from reading UI file 'project full screen.ui'
 #
 # Created by: Qt User Interface Compiler version 5.15.2
 #
@@ -16,11 +16,12 @@
 # ?         self.LabelPicture.mousePressEvent = self.getPos  # DRAWING POLYGON
 # ?         self.ButtonEdit.setFont(QFont(u"Arial", 18))
 ###############################################################################
+from sys import base_prefix
 from PySide2.QtCore import *
 from PySide2.QtGui import *
 from PySide2.QtWidgets import *
 
-from PySide2 import QtCore, QtGui
+# from PySide2 import QtCore, QtGui
 from PySide2.QtMultimedia import QSound
 
 import os
@@ -29,103 +30,163 @@ import xml.etree.ElementTree as ET
 # DRAWING POLYGON
 import numpy as np
 import cv2
+import matplotlib.pyplot as plt
 from shapely.geometry import Point, Polygon
+
 LabelPictureSize = (1500, 900)
 ButtonHeight = 40
-
 ClickedDetectSize = 10
 
+#!#############################################
+from lab_question import QuestionDialog
+
+from lab_camera_UI import CameraWidget
+#!#############################################
+from utils import set_font_size
+
+def resetLabelPictureSize(Size):
+    global LabelPictureSize
+    LabelPictureSize = Size
+
 class Ui_MainWindow(object):
+    def __init__(self):
+        # STATUS
+        self.status = None
+        # status: {'edit' | 'add_poly' | 'del_poly' | 'trans' | None}
+        
+        # for mouseMoveEvent, status=='edit' and (False -> highlight dots, True -> change self.attribute)
+        self.moving_dot = None
+        
+        self.pixHeight = None  # to check whether a image is read
+        self.tracking = False
+        self.semi_color = [
+            QColor(0, 0, 255, 100), QColor(0, 255, 0, 100),
+            QColor(255, 255, 0, 100), QColor(0, 0, 0, 100),
+            QColor(255, 128, 0, 100), QColor(0, 255, 255, 100),
+            QColor(255, 0, 255, 100), QColor(128, 128, 128, 100)
+        ]
+        self.SoundClicked = QSound(u'Polygon/sounds/clicked.wav')
+        self.SoundError = QSound(u'Polygon/sounds/error.wav')
+
+        app = QApplication.primaryScreen()
+        dpi = app.logicalDotsPerInch()
+        resolution = app.geometry()
+        resolution_height = resolution.height()
+        resolution_width = resolution.width()
+        print("dpi: ", dpi)
+        print("resolution height: ", resolution_height)
+        print("resolution width: ", resolution_width)
+        self.BasicFontSize = set_font_size(dpi, resolution_height, resolution_width)
+
     def setupUi(self, MainWindow):
+        self.change_centralwidget_to = MainWindow.setCentralWidget
+        self.MainWindow = MainWindow
+        self.MainWindow.setWindowTitle(u"MainWindow")
+
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(1031, 882)
-        font = QFont()
-        font.setFamily(u"Arial")
-        font.setPointSize(12)
-        MainWindow.setFont(font)
-        self.actionOpen = QAction(MainWindow)
+
+        basic_font = QFont(u"Arial", self.BasicFontSize)
+        title_font = QFont(u"Arial", self.BasicFontSize + 2)
+        MainWindow.setFont(basic_font)
+
+        self.actionOpen = QAction(u"Open", MainWindow)
         self.actionOpen.setObjectName(u"actionOpen")
-        self.actionSave = QAction(MainWindow)
+        self.actionOpen.setShortcut(u"Ctrl+O")
+        self.actionSave = QAction(u"Save", MainWindow)
         self.actionSave.setObjectName(u"actionSave")
+        self.actionSave.setShortcut(u"Ctrl+S")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
-        self.LabelPicture = QLabel(self.centralwidget)
+
+        self.LabelPicture = QLabel(u"Picture Place", self.centralwidget)
         self.LabelPicture.setObjectName(u"LabelPicture")
-        self.LabelPicture.setGeometry(QRect(20, 20, *LabelPictureSize))
         self.LabelPicture.mousePressEvent = self.getPos  # DRAWING POLYGON
         self.LabelPicture.mouseMoveEvent = self.mouseMove
         self.LabelPicture.mouseReleaseEvent = self.mouseRelease
         self.LabelPicture.setMouseTracking(True)
-        # self.LabelPicture.setScaledContents(True)
 
         self.frame = QFrame(self.centralwidget)
         self.frame.setObjectName(u"frame")
-        self.frame.setGeometry(QRect(1550, 30, 350, 1000))
         self.frame.setFrameShape(QFrame.StyledPanel)
         self.frame.setFrameShadow(QFrame.Raised)
-        self.groupBox_2 = QGroupBox(self.frame)
+
+        self.groupBox_2 = QGroupBox(u"Info", self.frame)
         self.groupBox_2.setObjectName(u"groupBox_2")
-        self.groupBox_2.setGeometry(QRect(10, 10, 300, 60))
-        font_14 = QFont()
-        font_14.setPointSize(14)
-        self.groupBox_2.setFont(font_14)
-        self.label = QLabel(self.groupBox_2)
-        self.label.setObjectName(u"label")
-        self.label.setGeometry(QRect(20, 30, 70, 20))
-        self.LabelPictureName = QLabel(self.groupBox_2)
-        self.LabelPictureName.setObjectName(u"LabelPictureName")
-        self.LabelPictureName.setGeometry(QRect(100, 30, 180, 20))
+        self.groupBox_2.setFont(title_font) 
+
+        self.TextPictureName = QPlainTextEdit(u"picturename.jpg", self.groupBox_2)
+        self.TextPictureName.setFont(basic_font)
+        self.TextPictureName.setToolTip(u"picturename.jpg")
+        self.TextPictureName.setFrameStyle(QFrame.NoFrame)
+        self.TextPictureName.setReadOnly(True)
+        self.TextPictureName.viewport().setAutoFillBackground(False)
+        # self.TextPictureName.setMinimumHeight(50) 
+
         self.tableWidget = QTableWidget(self.frame)
         if (self.tableWidget.columnCount() < 2):
             self.tableWidget.setColumnCount(2)
-        __qtablewidgetitem = QTableWidgetItem()
-        self.tableWidget.setHorizontalHeaderItem(0, __qtablewidgetitem)
-        __qtablewidgetitem1 = QTableWidgetItem()
-        self.tableWidget.setHorizontalHeaderItem(1, __qtablewidgetitem1)
-        
+        self.tableWidget.setHorizontalHeaderItem(0, QTableWidgetItem())
+        self.tableWidget.setHorizontalHeaderItem(1, QTableWidgetItem())
         self.tableWidget.setObjectName(u"tableWidget")
-        self.tableWidget.setGeometry(QRect(10, 90, 300, 300))
         self.tableWidget.selectionModel().selectionChanged.connect(self.TableSelectionChange)
-        font_Arial18 = QFont()
-        font_Arial18.setFamily(u"Arial")
-        font_Arial18.setPointSize(18)
-        self.groupBox = QGroupBox(self.frame)
-        self.groupBox.setObjectName(u"groupBox")
-        self.groupBox.setGeometry(QRect(40, 500, 240, 300)) # x, y, x_len, y_len
-        self.groupBox.setFont(font_Arial18)
-        # ADD region
-        self.ButtonAddRegion = QPushButton(self.groupBox)
-        self.ButtonAddRegion.setObjectName(u"ButtonAddRegion")
-        self.ButtonAddRegion.setGeometry(QRect(20, 40+(ButtonHeight+10)*0, 200, ButtonHeight))
-        self.ButtonAddRegion.setFont(font_Arial18)
-        # Edit
-        self.ButtonEdit = QPushButton(self.groupBox)
-        self.ButtonEdit.setObjectName(u"ButtonEdit")
-        self.ButtonEdit.setGeometry(QRect(20, 40+(ButtonHeight+10)*1, 200, ButtonHeight))
-        self.ButtonEdit.setFont(font_Arial18)
-        # Remove Polygon
-        self.ButtonRemove = QPushButton(self.groupBox)
-        self.ButtonRemove.setObjectName(u"ButtonRemove")
-        self.ButtonRemove.setGeometry(QRect(20, 40+(ButtonHeight+10)*2, 200, ButtonHeight))
-        self.ButtonRemove.setFont(font_Arial18)
-        # Camera / Pause
-        self.ButtonCamera = QPushButton(self.groupBox)
-        self.ButtonCamera.setObjectName(u"ButtonCamera")
-        self.ButtonCamera.setGeometry(QRect(20, 40+(ButtonHeight+10)*3, 200, ButtonHeight))
-        self.ButtonCamera.setFont(font_Arial18)
-        # Transformation
-        self.ButtonTransformation = QPushButton(self.groupBox)
-        self.ButtonTransformation.setObjectName(u"ButtonTransformation")
-        self.ButtonTransformation.setGeometry(QRect(20, 40+(ButtonHeight+10)*4, 200, ButtonHeight))
-        self.ButtonTransformation.setFont(font_Arial18)
+        self.tableWidget.horizontalHeaderItem(0).setText(u"Name")
+        self.tableWidget.horizontalHeaderItem(1).setText(u"Attribute")
 
-        MainWindow.setCentralWidget(self.centralwidget)
+        self.groupBox = QGroupBox(u"Functions", self.frame)
+        self.groupBox.setObjectName(u"groupBox")
+        self.groupBox.setFont(title_font)
+
+        # ADD region
+        self.ButtonAddRegion = QPushButton(u"ADD region", self.groupBox)
+        self.ButtonAddRegion.setObjectName(u"ButtonAddRegion")
+        self.ButtonAddRegion.setFont(basic_font)
+        self.ButtonAddRegion.setShortcut(u"Ctrl+N")
+        # Edit
+        self.ButtonEdit = QPushButton(u"Edit", self.groupBox)
+        self.ButtonEdit.setObjectName(u"ButtonEdit")
+        self.ButtonEdit.setFont(basic_font)
+        # Remove Polygon
+        self.ButtonRemove = QPushButton(u"Remove Polygon", self.groupBox)
+        self.ButtonRemove.setObjectName(u"ButtonRemove")
+        self.ButtonRemove.setFont(basic_font)
+        # Transformation
+        self.ButtonTransformation = QPushButton(u"Transformation", self.groupBox)
+        self.ButtonTransformation.setObjectName(u"ButtonTransformation")
+        self.ButtonTransformation.setFont(basic_font)
+
+        #---------- layout begin --------- 
+        self.main_layout = QHBoxLayout(self.centralwidget)  
+        self.main_layout.setObjectName(u"main_layout")  
+        self.main_layout.addWidget(self.LabelPicture, 8)  
+        self.main_layout.addWidget(self.frame, 2)  
+
+        self.layout_frame = QVBoxLayout(self.frame) 
+        self.layout_frame.setObjectName(u"layout_frame")  
+        self.layout_frame.addWidget(self.groupBox_2, 1)
+        self.layout_frame.addWidget(self.tableWidget, 3)
+        self.layout_frame.addWidget(self.groupBox, 5)
+
+        self.layout_button = QVBoxLayout(self.groupBox) 
+        self.layout_button.addWidget(self.ButtonAddRegion, 1)
+        self.layout_button.addWidget(self.ButtonEdit, 1)
+        self.layout_button.addWidget(self.ButtonRemove, 1)
+        self.layout_button.addStretch(1)
+        self.layout_button.addWidget(self.ButtonTransformation, 1)
+
+        self.layout_info = QVBoxLayout(self.groupBox_2) # for the new line
+        self.layout_info.addWidget(self.TextPictureName) # for the new line
+        #---------- layout end --------- 
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
         self.menubar.setGeometry(QRect(0, 0, 1031, 21))
-        self.menuFile = QMenu(self.menubar)
-        self.menuFile.setObjectName(u"menuFile")
+        self.menuFile = QMenu(u"File", self.menubar)
+        self.menuFile.setObjectName(u"menuFile") 
+
+        menuFile_font = QFont(u"Arial", self.BasicFontSize - 3)
+        self.menuFile.setFont(menuFile_font) 
+
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QStatusBar(MainWindow)
         self.statusbar.setObjectName(u"statusbar")
@@ -134,8 +195,12 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuFile.menuAction())
         self.menuFile.addAction(self.actionOpen)
         self.menuFile.addAction(self.actionSave)
-
-        self.retranslateUi(MainWindow)
+        #--------------------------------- move down camerawidget
+        self.camerawidget = CameraWidget(self.centralwidget)
+        self.camerawidget.setupUi(MainWindow, self.BasicFontSize)
+        MainWindow.setCentralWidget(self.camerawidget)
+        #---------------------------------
+        # self.retranslateUi(MainWindow)
 
         QMetaObject.connectSlotsByName(MainWindow)
 
@@ -145,11 +210,9 @@ class Ui_MainWindow(object):
         self.ButtonAddRegion.clicked.connect(self.AddRegion)
         self.ButtonEdit.clicked.connect(self.EditPolygon)
         self.ButtonRemove.clicked.connect(self.DelPolygon)
-        self.ButtonCamera.clicked.connect(self.CameraMode)
         self.ButtonTransformation.clicked.connect(self.ToTrans)
         
-        ##### STATUS
-        self.status = None
+        ##### INITIALIZE after setupUI()
         # status: {'edit' | 'add_poly' | 'del_poly' | 'trans' | None}
         self.map_Button_to_status = {
             self.ButtonEdit: 'edit',
@@ -157,69 +220,85 @@ class Ui_MainWindow(object):
             self.ButtonRemove: 'del_poly',
             self.ButtonTransformation: 'trans'
         }
-        # for mouseMoveEvent, status=='edit' and (False -> highlight dots, True -> change self.attribute)
-        self.moving_dot = None
+        for button in self.map_Button_to_status: 
+            button.setMinimumHeight(30) 
         
-        self.pixHeight = None  # to check whether a image is read
-        self.tracking = False
-        self.semi_color = [
-            # QtGui.QColor(255, 0, 0, 100),
-            QtGui.QColor(0, 0, 255, 100), QtGui.QColor(0, 255, 0, 100),
-            QtGui.QColor(255, 255, 0, 100), QtGui.QColor(0, 0, 0, 100),
-            QtGui.QColor(255, 128, 0, 100), QtGui.QColor(0, 255, 255, 100),
-            QtGui.QColor(255, 0, 255, 100), QtGui.QColor(128, 128, 128, 100)
-        ]
+        self.centralwidget.keyPressEvent = self.keyPress
     # setupUi
 
-    def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
-        self.actionOpen.setText(QCoreApplication.translate("MainWindow", u"Open", None))
-        #if QT_CONFIG(shortcut)
-        self.actionOpen.setShortcut(QCoreApplication.translate("MainWindow", u"Ctrl+O", None))
-        #endif // QT_CONFIG(shortcut)
-        self.actionSave.setText(QCoreApplication.translate("MainWindow", u"Save", None))
-        #if QT_CONFIG(shortcut)
-        self.actionSave.setShortcut(QCoreApplication.translate("MainWindow", u"Ctrl+S", None))
-        #endif // QT_CONFIG(shortcut)
-        self.LabelPicture.setText(QCoreApplication.translate("MainWindow", u"Picture Place", None))
-        self.groupBox_2.setTitle(QCoreApplication.translate("MainWindow", u"Info", None))
-        self.label.setText(QCoreApplication.translate("MainWindow", u"Picture:", None))
-        self.LabelPictureName.setText(QCoreApplication.translate("MainWindow", u"picturename.jpg", None))
-        ___qtablewidgetitem = self.tableWidget.horizontalHeaderItem(0)
-        ___qtablewidgetitem.setText(QCoreApplication.translate("MainWindow", u"Name", None));
-        ___qtablewidgetitem1 = self.tableWidget.horizontalHeaderItem(1)
-        ___qtablewidgetitem1.setText(QCoreApplication.translate("MainWindow", u"Attribute", None));
+    def keyPress(self, event):
+        if event.key() == Qt.Key_Escape:
+            # print('you Pressed ESC!')
+            if self.status is None:
+                # click to Highlight polygon
+                self.tableWidget.clearSelection()
+                self.ReDraw(update_for_tracking_pixmap=False)
 
-        self.groupBox.setTitle(QCoreApplication.translate("MainWindow", u"Functions", None))
-        self.ButtonAddRegion.setText(QCoreApplication.translate("MainWindow", u"ADD region", None))
-        #if QT_CONFIG(shortcut)
-        self.ButtonAddRegion.setShortcut(QCoreApplication.translate("MainWindow", u"Ctrl+N", None))
-        #endif // QT_CONFIG(shortcut)
-        self.ButtonEdit.setText(QCoreApplication.translate("MainWindow", u"Edit", None))
-        self.ButtonCamera.setText(QCoreApplication.translate("MainWindow", u"Camera / Pause", None))
-        self.ButtonTransformation.setText(QCoreApplication.translate("MainWindow", u"Transformation", None))
-        #remove polygon
-        self.ButtonRemove.setText(QCoreApplication.translate("MainWindow", u"Remove Polygon", None))
-        self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
-    # retranslateUi
+            elif self.status == 'add_poly':
+                # 1. click 'add region'
+                # 2. start add points
+                del self.color_index[-1]
+                self.tracking = False
+                self.set_status(self.ButtonAddRegion, False)
+                # 3. finish a polygon and a Window pop up
+                #    ESC: close window, add new row, leave add_poly
+
+            elif self.status == 'edit':
+                # 1. click 'edit'
+                self.set_status(self.ButtonEdit, False)
+                # 2-1. click and drag node( not released )
+                self.ReDraw(update_for_tracking_pixmap=True)
+                self.moving_dot = None
+                # 2-2. click 'transform'  # Won't affect
+
+            elif self.status == 'del_poly':
+                # 1. click 'remove'
+                self.set_status(self.ButtonRemove, False)
+                # 2. click polygon and a Dialog pop up
+                #    ESC: close dialog window
+
+            elif self.status == 'transfrom':
+                plt.close('all')
+                # 不過 transform 一瞬間就消失了，應該不會有這個機會
+
+            else:
+                self.ShowErrorToStatusbar(f'Strange status: {self.status}')
 
     # connect to --> self.actionOpen
     def BrowseFiles(self):
+        # 主畫面
+        if self.MainWindow.centralWidget().objectName() != 'centralwidget':
+            self.ShowErrorToStatusbar(f'[ERROR] can\'t open file while correlating camera')
+            return
+        
         if self.status is not None:
             self.ShowErrorToStatusbar(f'[ERROR] Try to open file when Button(s) are still active: [{self.status}]')
             return
 
-        filename = QFileDialog.getOpenFileName(self.centralwidget, 'Open file', os.getcwd(), 'Image files (*.jpg *.png)')
+        filename = QFileDialog.getOpenFileName(self.centralwidget, 'Open file', os.getcwd(),
+                                               'Image files (*.jpg *.png)')
         # filename: (filepath: str, image type(same as I write): str)
-
+        
         # ? Find Picutre
-        if not filename[0]:
+        if filename[0]:
+            # print(filename[0])
+            self.OpenPictureFile(filename[0])
+        else:
             self.ShowErrorToStatusbar('[ERROR] No picture file select')
             return
 
-        print(filename[0])
-        self.full_pic_path = filename[0]
-        self.LabelPictureName.setText(self.full_pic_path.split('/')[-1])
+    def OpenPictureFile(self, filename):
+        # ! Make sure that:
+        # ! there is a picture at path [filename]
+        # global LabelPictureSize 
+        # LabelPictureSize = self.LabelPicture.size().toTuple() 
+        # print(f'LabelPicture Size: {LabelPictureSize}') 
+
+        self.full_pic_path = filename
+        pic_name = self.full_pic_path.split('/')[-1]
+        self.TextPictureName.setPlainText(pic_name)
+        self.TextPictureName.setToolTip(pic_name)
+
         self.RemoveAllRows()
 
         pixmap = QPixmap(self.full_pic_path)
@@ -232,12 +311,13 @@ class Ui_MainWindow(object):
         
         # DRAWING POLYGON
         self.for_delete = pixmap
-        self.image = cv2.imread(self.full_pic_path)
+        # self.image = cv2.imread(self.full_pic_path)
+        self.image = cv2.imdecode(np.fromfile(self.full_pic_path, dtype=np.uint8), cv2.IMREAD_COLOR)
         self.resize = self.image.shape[1] / pixmap.width()
         self.attribute = []
         self.color_index = []
         self.matrix_pix_to_cm = None
-        print(self.image.shape[:2])
+        print(f'Image (W, H): {self.image.shape[:2]}')
 
         # Find XML file
         self.full_xml_path = self.full_pic_path.rsplit('.')[0] + '.xml'
@@ -297,40 +377,36 @@ class Ui_MainWindow(object):
             self.set_status(self.ButtonAddRegion, True)
             self.fun()  # DRAWING POLYGON
             # AfterPolygon() should be CALL by the last operation in drawing polygon
+        elif self.status == 'add_poly':
+            del self.color_index[-1]
+            self.tracking = False
+            self.set_status(self.ButtonAddRegion, False)
         else:
             self.ShowErrorToStatusbar(f'[ERROR] try to set status [add_poly] on while status [{self.status}] on')
+            # del self.attribute[-1]
+            # def self.color_index[-1]
+            # self.set_status(self.ButtonAddRegion, False)
 
     def AfterPolygon(self):
-        name, okPressed = QInputDialog.getText(self.centralwidget, "Get Name", "Your name:", QLineEdit.Normal, "")
-        if okPressed and name != '':
-            print(name)
-        attr, okPressed = QInputDialog.getText(self.centralwidget, "Get Attr", "Your attribute:", QLineEdit.Normal, "")
-        if okPressed and attr != '':
-            print(attr)
+        qd = QuestionDialog(self.BasicFontSize)
+        okPressed = qd.exec()
+        # qd.move ((QApplication.desktop().width() - self.centralwidget.width())/2, (QApplication.desktop().height() - self.centralwidget.height())/2)
+        if okPressed == QDialog.Accepted:
+            self.add_row((qd.getInputs()))
+        elif okPressed == QDialog.Rejected:
+            self.add_row(('', ''))
 
-        self.add_row((name, attr))
-
-    def add_row(self, content=None):
+    def add_row(self, content):
         row = self.tableWidget.rowCount()
         # print(f'add row: {row}')
         self.tableWidget.setRowCount(row + 1)
         
         # Build empty row
-        __qtablewidgetitem3 = QTableWidgetItem()
-        self.tableWidget.setVerticalHeaderItem(row, __qtablewidgetitem3)
-        if content is not None:
-            __qtablewidgetitem4 = QTableWidgetItem(content[0])
-            self.tableWidget.setItem(row, 0, __qtablewidgetitem4)
-            __qtablewidgetitem5 = QTableWidgetItem(content[1])
-            self.tableWidget.setItem(row, 1, __qtablewidgetitem5)
-        else:
-            __qtablewidgetitem4 = QTableWidgetItem(u"edit...")
-            # __qtablewidgetitem4.setText(QCoreApplication.translate("MainWindow", u"edit..", None));
-            self.tableWidget.setItem(row, 0, __qtablewidgetitem4)
+        self.tableWidget.setVerticalHeaderItem(row, QTableWidgetItem())
 
-            __qtablewidgetitem5 = QTableWidgetItem(u"edit...")
-            # __qtablewidgetitem5.setText(QCoreApplication.translate("MainWindow", u"edit...", None));
-            self.tableWidget.setItem(row, 1, __qtablewidgetitem5)
+        # content
+        self.tableWidget.setItem(row, 0, QTableWidgetItem(content[0]))
+        self.tableWidget.setItem(row, 1, QTableWidgetItem(content[1]))
         
         # edit content method
         # ___qtablewidgetitem2 = self.tableWidget.item(0, 0)
@@ -351,9 +427,6 @@ class Ui_MainWindow(object):
             # deselect
             if deselected_row:
                 self.ReDraw(update_for_tracking_pixmap=False)
-            # if self.selected_row is not None and self.selected_row in deselected_row:
-            #     self.selected_row = None
-            #     self.ReDraw(update_for_tracking_pixmap=False)
             
             # select
             if len(selected.indexes()) > 0:
@@ -369,40 +442,70 @@ class Ui_MainWindow(object):
 
     # connect to --> self.actionSave
     def SaveFile(self):
-        if self.pixHeight is None:  # don't read a file
-            self.ShowErrorToStatusbar(f'[ERROR] not read a picture yet but clicked [File > Save]')
-            return
-        if self.status is not None:
-            self.ShowErrorToStatusbar(f'[ERROR] Try to save file when Button(s) are still active: [{self.status}]')
-            return
+        # 主畫面
+        if self.MainWindow.centralWidget().objectName() == 'centralwidget':
+            if self.pixHeight is None:  # don't read a file
+                self.ShowErrorToStatusbar(f'[ERROR] not read a picture yet but clicked [File > Save]')
+                return
+            if self.status is not None:
+                self.ShowErrorToStatusbar(f'[ERROR] Try to save file when Button(s) are still active: [{self.status}]')
+                return
 
-        # save data to pic_name.xml
-        root = ET.Element('annotation')
-        filename = ET.SubElement(root, 'filename')
-        filename.text = self.full_pic_path.split('/')[-1]
-        for i in range(self.tableWidget.rowCount()):
-            object = ET.SubElement(root, 'object')
+            # save data to pic_name.xml
+            root = ET.Element('annotation')
+            filename = ET.SubElement(root, 'filename')
+            filename.text = self.full_pic_path.split('/')[-1]
+            for i in range(self.tableWidget.rowCount()):
+                object = ET.SubElement(root, 'object')
+                
+                name = ET.SubElement(object, 'name')
+                name.text = self.tableWidget.item(i, 0).text()
+                attribute = ET.SubElement(object, 'attribute')
+                attribute.text = self.tableWidget.item(i, 1).text()
+                polygon = ET.SubElement(object, 'polygon')
+                # print('Attr:', self.attribute)
+                for pos_x, pos_y in self.attribute[i]:  # 第 i 個 row (polygon)
+                    pt = ET.SubElement(polygon, 'pt')
+                    x = ET.SubElement(pt, 'x')
+                    x.text = str(pos_x * self.resize)
+                    y = ET.SubElement(pt, 'y')
+                    y.text = str(pos_y * self.resize)
             
-            name = ET.SubElement(object, 'name')
-            name.text = self.tableWidget.item(i, 0).text()
-            attribute = ET.SubElement(object, 'attribute')
-            attribute.text = self.tableWidget.item(i, 1).text()
-            polygon = ET.SubElement(object, 'polygon')
-            # print('Attr:', self.attribute)
-            for pos_x, pos_y in self.attribute[i]:  # 第 i 個 row (polygon)
-                pt = ET.SubElement(polygon, 'pt')
-                x = ET.SubElement(pt, 'x')
-                x.text = str(pos_x * self.resize)
-                y = ET.SubElement(pt, 'y')
-                y.text = str(pos_y * self.resize)
-        
-        tree = ET.ElementTree(root)
-        tree.write(self.full_xml_path, encoding="utf-8")
-        print(f'save data to: [{self.full_xml_path}]')
+            tree = ET.ElementTree(root)
+            tree.write(self.full_xml_path, encoding="utf-8")
+            print(f'save data to: [{self.full_xml_path}]')
 
-        if self.matrix_pix_to_cm is not None:
-            np.save(self.full_pic_path.rsplit('.')[0] + '.npy', self.matrix_pix_to_cm)
-            print(f'save transfrom matrix to: [{self.full_pic_path.rsplit(".")[0] + ".npy"}]')
+            if self.matrix_pix_to_cm is not None:
+                np.save(self.full_pic_path.rsplit('.')[0] + '.npy', self.matrix_pix_to_cm)
+                print(f'save transfrom matrix to: [{self.full_pic_path.rsplit(".")[0] + ".npy"}]')
+
+        # camera Calibration 畫面
+        elif self.MainWindow.centralWidget().objectName() == 'camerawidget':
+            if self.camerawidget.image is None:
+                self.ShowErrorToStatusbar(f'[ERROR] No Image to Save')
+                return
+
+            filename = QFileDialog.getSaveFileName(self.camerawidget, 'Save file', os.getcwd(),
+                                                   'Image files (*.jpg *.png)')
+            # filename: (filepath: str, image type(same as I write): str)
+            # ! NOT select save path
+            if not filename[0]:
+                self.ShowErrorToStatusbar('[ERROR] Not select path to save picture')
+                return
+            
+            # save to filepath[0]
+            print(f'Save picture to {filename[0]}')
+            # cv2.imwrite(filename[0], self.camerawidget.image)
+            cv2.imencode('.jpg', self.camerawidget.image)[1].tofile(filename[0])
+         
+            # Openfile at self.centralwidget
+            self.change_centralwidget_to(self.centralwidget)
+            self.camerawidget.thread.stop()
+            self.OpenPictureFile(filename[0])
+
+        else:
+            self.ShowErrorToStatusbar(
+                f'[ERROR] strange centralwidget name: {self.MainWindow.centralWidget().objectName()}')
 
     # connect to --> self.ButtonEdit
     def EditPolygon(self):
@@ -417,10 +520,6 @@ class Ui_MainWindow(object):
         else:
             self.ShowErrorToStatusbar(f'[ERROR] try to set status [edit] on while status [{self.status}] on')
 
-    # connect to --> self.ButtonCamera
-    def CameraMode(self):
-        pass
-
     # connect to --> self.ButtonTransformation
     def ToTrans(self):
         if self.pixHeight is None:  # don't read a file
@@ -434,7 +533,7 @@ class Ui_MainWindow(object):
             return
 
         status_edit = self.status  # None or 'edit'
-        
+
         idx = -1
         for i in range(self.tableWidget.rowCount()):
             if self.tableWidget.item(i, 0).text() == 'TRANS':
@@ -445,9 +544,13 @@ class Ui_MainWindow(object):
             self.ShowErrorToStatusbar('[ERROR] polygon with name [TRANS] not found')
             return
 
+        if len(self.attribute[idx]) != 4:
+            self.ShowErrorToStatusbar(f'[ERROR] polygon with node: {self.attribute[idx]}, expected: 4')
+            return
+
         # status is None AND found a polygon
         self.set_status(self.ButtonTransformation, True)
-        
+
         # position text parser
         attr_text = self.tableWidget.item(idx, 1).text()
 
@@ -457,7 +560,7 @@ class Ui_MainWindow(object):
         src = np.array(self.attribute[i], np.float32) * self.resize
         src = src.reshape(-1, 2)
         attr = np.float32(attr).reshape((4, 2))
-        
+
         # calculate the matrix for real world, we will not use it!
         # self.SaveFile()
         self.matrix_pix_to_cm = cv2.getPerspectiveTransform(src, attr)
@@ -474,40 +577,50 @@ class Ui_MainWindow(object):
         attr = attr * ratio  # change cm to pixel in the image
         matrix = cv2.getPerspectiveTransform(src, attr)
 
-        ww = self.image.shape[1]
-        hh = self.image.shape[0]
-        width, height, shift_x, shift_y = self.shift(src, matrix)
+        img_w = self.image.shape[1]
+        img_h = self.image.shape[0]
+        ori = np.float32([[0, 0], [img_w, 0], [img_w, img_h], [0, img_h]])
+        ox, oy = self.shift(ori, matrix)
         # move the selected region to the center, and avoid some part of image be cut off
         for i in range(0, 4):
-            attr[i][0] = attr[i][0] - shift_x + 100
-            attr[i][1] = attr[i][1] - shift_y + 100
+            attr[i][0] = attr[i][0] + ox
+            attr[i][1] = attr[i][1] + oy
 
+        width = int(2*ox)
+        height = int(2*oy)
         matrix = cv2.getPerspectiveTransform(src, attr)
-        result = cv2.warpPerspective(
-            self.image, matrix, (int(width), int(height)),
-            cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0)
-        )
+        # 轉換後能完整圖片，且將區塊置中
+        result = cv2.warpPerspective(self.image, matrix, (width, height), cv2.INTER_LINEAR,
+                                     borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0))
 
         # show the result
-        fx = 1200 / int(width)
-        fy = 800 / int(height)
+        fx = 1000 / int(width)
+        fy = 1000 / int(height)
         f = min(fx, fy)
 
         print(int(width)*f, int(height)*f)
-        resized = cv2.resize(result, None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
+        resized = cv2.resize(result, None, fx=f, fy=f,
+                             interpolation=cv2.INTER_AREA)
+        attr *= f
+        # attr = attr.astype(int)  #! prevent error
+
+        # zoom in zoom out
+        plt.close('all')
+        self.fig = plt.figure(figsize=(10, 8))
+        self.fig.canvas.mpl_connect('scroll_event', self.call_back)
+        self.fig.canvas.mpl_connect('button_press_event', self.call_back)
         
-	attr *= f
-        p = attr.astype(int)
-	
-        cv2.line(resized, tuple(p[0]), tuple(p[1]), (255, 0, 0), 3)
-        cv2.line(resized, tuple(p[1]), tuple(p[2]), (255, 0, 0), 3)
-        cv2.line(resized, tuple(p[2]), tuple(p[3]), (255, 0, 0), 3)
-        cv2.line(resized, tuple(p[3]), tuple(p[0]), (255, 0, 0), 3)
-	
-        cv2.imshow('transform', resized)
-        cv2.moveWindow('transform', 200, 200)
-        cv2.waitKey(0)
-        
+        plt.imshow(resized)
+        x = [attr[3][0], attr[0][0]]
+        y = [attr[3][1], attr[0][1]]
+        plt.plot(x, y, color="blue", linewidth=3)
+        for i in range(0, 3):
+            x = [attr[i][0], attr[i+1][0]]
+            y = [attr[i][1], attr[i+1][1]]
+            plt.plot(x, y, color="blue", linewidth=3)
+
+        plt.show(block=False)
+
         self.set_status(self.ButtonTransformation, False)
         if status_edit == 'edit':
             self.set_status(self.ButtonEdit, True)
@@ -527,14 +640,15 @@ class Ui_MainWindow(object):
 
     def TryDeletePolygon(self, idx):
         '''
-            Highlight polygon idx
-            MessageBox to double check
+        Highlight polygon idx
+        MessageBox to double check
         '''
         # TODO Highlight polygon i
         self.polygon(self.attribute[idx], 3, self.color_index[idx])
 
-        reply = QMessageBox.question(self.centralwidget, "刪除", "刪除這個多邊形?",
+        reply = QMessageBox.question(self.centralwidget, "刪除", " 刪除這個多邊形? ",
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+
         if reply == QMessageBox.Yes:
             # print('reply Yes')
             del self.attribute[idx]
@@ -549,7 +663,7 @@ class Ui_MainWindow(object):
 
     def set_status(self, button, onoff):
         # ! daugerous, direct change status no matter what status is
-
+        self.SoundClicked.play()
         if onoff:
             self.status = self.map_Button_to_status[button]
             button.setStyleSheet('QPushButton {background-color: cyan;}')
@@ -566,8 +680,10 @@ class Ui_MainWindow(object):
         #     self.polygon(poly, 1, self.color_index[i])
 
     def ShowErrorToStatusbar(self, text):
+        self.SoundError.play()
         print(text)
         self.statusbar.showMessage(text, 3000)
+
     # ---------------------------------------------------------------- DRAWING POLYGON
     # mouseMoveEvent
     def mouseMove(self, event):
@@ -576,7 +692,7 @@ class Ui_MainWindow(object):
 
         # map pixel on LabelPicture to pixel on image file
         x = event.pos().x()  # real x point on the image
-        y = event.pos().y() - 450 + self.pixHeight / 2
+        y = event.pos().y() - (LabelPictureSize[1] - self.pixHeight) / 2
 
         # self.attribute: [polygons], polygon: [points], point: [x, y]
         if self.status == 'edit':
@@ -596,9 +712,6 @@ class Ui_MainWindow(object):
                 # plot before editing
                 # ! REDRAW
                 self.ReDraw(update_for_tracking_pixmap=False)
-                # self.LabelPicture.setPixmap(self.for_delete)
-                # for i, poly in enumerate(self.attribute):
-                #     self.polygon(poly, 1, self.color_index[i])
                 
                 for i, poly in enumerate(self.attribute):
                     for j, point in enumerate(poly):
@@ -610,16 +723,16 @@ class Ui_MainWindow(object):
         elif self.status == 'add_poly':
             if self.tracking:
                 self.pos_x = event.pos().x() 
-                self.pos_y = event.pos().y() - 450 + self.pixHeight/2
+                self.pos_y = event.pos().y() - (LabelPictureSize[1] - self.pixHeight) / 2
                 self.Draw()
         else:
             pass
 
-    # mousePressEvent
+    # mouseReleaseEvent
     def mouseRelease(self, event):
         # self.pos_x, self.pos_y = event.pos().x(), event.pos().y() - 450 + pixHeight/2
         if self.status == 'edit':
-            self.LabelPicture.setMouseTracking(True)
+            # self.LabelPicture.setMouseTracking(True)
             self.ReDraw(update_for_tracking_pixmap=True)
             self.moving_dot = None
 
@@ -631,7 +744,7 @@ class Ui_MainWindow(object):
 
         # real pixmap height
         x = event.pos().x()  # real x point on the image
-        y = event.pos().y() - 450 + self.pixHeight / 2
+        y = event.pos().y() - (LabelPictureSize[1] - self.pixHeight) / 2
 
         if self.status == 'add_poly':
             if len(self.tmp) == 0:
@@ -640,7 +753,7 @@ class Ui_MainWindow(object):
                 self.tracking = True
 
             # 第二個點不能點回第一個點
-            if len(self.tmp)==2 and \
+            if len(self.tmp) == 2 and \
                abs(x-self.start_x) < ClickedDetectSize and\
                abs(y-self.start_y) < ClickedDetectSize:
                self.tmp = []
@@ -649,7 +762,7 @@ class Ui_MainWindow(object):
             self.PreviousPair = (x, y)
             
             # 刪掉不小心點兩下的點
-            if len(self.tmp) >=2 and \
+            if len(self.tmp) >= 2 and \
                abs(x-self.tmp[-2][0]) < 3 and\
                abs(y-self.tmp[-2][1]) < 3:
                del self.tmp[-1]
@@ -664,7 +777,8 @@ class Ui_MainWindow(object):
 
                 self.attribute.append(self.tmp)
                 self.ReDraw(update_for_tracking_pixmap=True)
-                self.AfterPolygon()  # add name and attribute on the table
+                # add name and attribute on the tables
+                self.AfterPolygon()
 
                 self.set_status(self.ButtonAddRegion, False)
             # LabelPic 的座標(1500, 900)
@@ -691,12 +805,16 @@ class Ui_MainWindow(object):
                         # highlight this point: self.attribute[i][j]
                         # self.draw(p_x, p_y, 20 / self.resize)
                         self.moving_dot = (i, j)
-                        self.ReDraw(False, except_row=i)  # update_for_tracking_pixmap not important here
+                        # update_for_tracking_pixmap not important here
+                        self.ReDraw(False, except_row=i)
                         # print(f'Edit polygon [{i}]')
                         break
         
         elif self.status == None:
             # Highlight corresponding table row
+            if len(self.attribute) == 0:
+                return  # no polygon to highlight
+
             p = Point(x, y)
             idx = -1
             for i in range(len(self.attribute)):
@@ -706,13 +824,9 @@ class Ui_MainWindow(object):
             if idx != -1:
                 self.tableWidget.selectRow(idx)
             else:
-                self.selected_row = None
                 self.tableWidget.clearSelection()
                 # ! REDRAW
                 self.ReDraw(update_for_tracking_pixmap=False)
-                # self.LabelPicture.setPixmap(self.for_delete)
-                # for i, poly in enumerate(self.attribute):
-                #     self.polygon(poly, 1, self.color_index[i])
 
         # ----------------------------------------------------------------
 
@@ -730,10 +844,10 @@ class Ui_MainWindow(object):
         for qpoint in tmp:
             x = qpoint[0]
             y = qpoint[1]
-            p.append(QtCore.QPoint(x, y))
-        pixmap = QtGui.QPixmap(self.LabelPicture.pixmap())
-        qp = QtGui.QPainter(pixmap)
-        pen = QtGui.QPen(Qt.black, 3)
+            p.append(QPoint(x, y))
+        pixmap = QPixmap(self.LabelPicture.pixmap())
+        qp = QPainter(pixmap)
+        pen = QPen(Qt.black, 3)
         qp.setPen(pen)
 
         # for new polygon
@@ -753,7 +867,7 @@ class Ui_MainWindow(object):
         # for highlight the polygon
         elif load == 3:
             # qp.setBrush(self.semi_color[idx].darker(int=1000000))
-            qp.setBrush(QtGui.QColor(255, 0, 0, 200))
+            qp.setBrush(QColor(255, 0, 0, 200))
 
         qp.drawPolygon(p)
         qp.end()
@@ -766,7 +880,7 @@ class Ui_MainWindow(object):
         # random choose a color
         self.index = np.random.randint(len(self.semi_color))  # [0, 7]
         self.color_index.append(self.index)
-        self.for_tracking_pixmap = QtGui.QPixmap(self.LabelPicture.pixmap())
+        self.for_tracking_pixmap = QPixmap(self.LabelPicture.pixmap())
 
     # ---- for transfrom ----
     def distance(self, a1, a2, a3, a4):
@@ -790,11 +904,31 @@ class Ui_MainWindow(object):
         p4_x, p4_y = self.cal_point(pts[3][0], pts[3][1], m)
         x = [p1_x, p2_x, p3_x, p4_x]
         y = [p1_y, p2_y, p3_y, p4_y]
-        shift_x = min(x)
-        shift_y = min(y)
-        width = max(x) - min(x) + 200
-        height = max(y) - min(y) + 200
-        return width, height, shift_x, shift_y
+        for i in range(0, 4):
+            x[i] = abs(x[i])
+            y[i] = abs(y[i])
+        ox = max(x)
+        oy = max(y)
+        return ox, oy
+    
+    # for ToTrans matplot window 
+    def call_back(self, event):
+        axtemp = event.inaxes
+        x_min, x_max = axtemp.get_xlim()
+        y_min, y_max = axtemp.get_ylim()
+        fanwei = (x_max - x_min) / 10
+        fanwei2 = (y_max - y_min) / 10
+
+        if event.button == 'up':
+            axtemp.set(xlim=(x_min + fanwei, x_max - fanwei),
+                       ylim=(y_min + fanwei2, y_max - fanwei2))
+
+        elif event.button == 'down':
+            axtemp.set(xlim=(x_min - fanwei, x_max + fanwei),
+                       ylim=(y_min - fanwei2, y_max + fanwei2))
+
+        self.fig.canvas.draw_idle()
+
     # ---- for transfrom ----
 
     def Draw(self):
@@ -827,7 +961,7 @@ class Ui_MainWindow(object):
         if len(self.tmp) >= 2:
             painter.setPen(QPen(Qt.black, 2))
             previous_pair = self.tmp[0]
-            for pair in self.tmp[1: ]:
+            for pair in self.tmp[1:]:
                 painter.drawLine(*previous_pair, *pair)
                 previous_pair = pair
 

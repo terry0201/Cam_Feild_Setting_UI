@@ -18,7 +18,8 @@ an UI that can do
 > `pip install PySide2`  
 > `pip install opencv-python`  
 > `pip install Shapely`  
-> `pip install numpy`
+> `pip install numpy`  
+> `pip install matplotlib`
 
 備註: .xml(多邊形資料) / .npy(transform 矩陣) 會儲存在與圖片相同資料夾底下
 

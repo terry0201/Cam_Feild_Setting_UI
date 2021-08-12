@@ -1,7 +1,7 @@
 import cv2
 from time import time
 import numpy as np
-from utils import cal_reproject_error, sliding_window_calibrate, scatter_hist
+from utils import cal_reproject_error, sliding_window_calibrate, scatter_hist, calculate_the_worst, no_sample_block
 
 def capture(frame_count=20, slide_threshold=10):        #frame_counter=> how many frames in total
     counter=0
@@ -41,15 +41,21 @@ def capture(frame_count=20, slide_threshold=10):        #frame_counter=> how man
                     img_size = (_width, _height)
 
                     if counter>slide_threshold:  #choosing when to do the sliding window
-                        ret, mtx, dist, rvecs, tvecs, imgpoints, objpoints, err = sliding_window_calibrate(objpoints, imgpoints, img_size, counter, frame_count)
+                        # ret, mtx, dist, rvecs, tvecs, imgpoints, objpoints, err = sliding_window_calibrate(objpoints, imgpoints, img_size, counter, frame_count)
+                        err, imgpoints, objpoints = calculate_the_worst(objpoints, imgpoints, img_size, counter, frame_count, eliminate=False)
+
                     else:
-                        ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_size, None, None)
-                        err = cal_reproject_error(imgpoints,objpoints,rvecs,tvecs,mtx,dist)
+                        # ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_size, None, None)
+                        # err = cal_reproject_error(imgpoints,objpoints,rvecs,tvecs,mtx,dist)
+                        err, imgpoints, objpoints = calculate_the_worst(objpoints, imgpoints, img_size, counter, frame_count, eliminate=False)
+                        pass
 
                     print("error:{}".format(err))
                 else:
                     print("No chessboard is found in this frame")
 
+                print("相機資料數:",len(imgpoints))
+                print("空間資料數:",len(objpoints))
                 print('\n')
                 if counter == frame_count:  #meet the number of frames defined in the begining
                     cap.release()           #release the camera
@@ -57,7 +63,9 @@ def capture(frame_count=20, slide_threshold=10):        #frame_counter=> how man
                     break
             start_time=cur_time
             print("a frame will be captured in three seconds")
+    no_sample_block(_width, _height, imgpoints)
     scatter_hist(imgpoints, _width, _height)
+
 
 
 if __name__ == '__main__':
