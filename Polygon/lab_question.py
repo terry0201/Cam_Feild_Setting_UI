@@ -1,15 +1,19 @@
 import sys
-from PySide2.QtWidgets import QWidget, QPushButton, QApplication, QAction, QLineEdit, QLabel, QFormLayout, QDialog, QComboBox, QGridLayout
-from PySide2.QtCore import QRect, QCoreApplication
+from PySide2.QtWidgets import QWidget, QPushButton, QApplication, QLineEdit, QLabel, QGroupBox, QDialog, QComboBox, QGridLayout, QVBoxLayout
 from PySide2.QtGui import QFont
-from PySide2.QtWidgets import *
-from PySide2.QtCore import *
+
 
 
 class QuestionDialog(QDialog):
     def __init__(self, basicFontSize):
         super().__init__()
-        COMBO_BOX_ITEM = ['', 'TRANS', 'Tree', 'Car']
+        file=open("Polygon/name.txt","r")
+        read_file=file.read()
+        names=read_file.split("\n")
+        COMBO_BOX_ITEM = ['']
+        for i in range(len(names)):
+            COMBO_BOX_ITEM.append(names[i])
+        file.close()
         font = QFont('Arial', basicFontSize)
         # self.setFixedSize(400, 180)
         
@@ -77,7 +81,55 @@ class QuestionDialog(QDialog):
 
     def getInputs(self):
         return (self.A1.text(), self.A2.text())
-    
+
+class AddressDialog(QDialog):
+    def __init__(self, basicFontSize):
+        super().__init__()
+        font = QFont('Arial', basicFontSize)
+        self.setWindowTitle("RTSP Camera")
+
+        self.LabelAddr = QLabel('Address:')
+        self.A1 = QLineEdit(self)
+        self.OK = QPushButton('OK', self)
+        self.Cancel = QPushButton('Cancel', self)
+
+        self.OK.clicked.connect(self.accept)
+        self.Cancel.clicked.connect(self.reject)
+        
+        self.A1.setFont(font)
+        self.OK.setFont(font)
+        self.Cancel.setFont(font)
+        self.LabelAddr.setFont(font)
+        #------------ Layout -------------
+        self.groupBoxInputs = QGroupBox()
+        self.groupBoxInputs.setStyleSheet("QGroupBox{ border: 0px ; }")
+
+        g_layout = QGridLayout()
+        g_layout.addWidget(self.LabelAddr, 0, 0)
+        g_layout.addWidget(self.A1, 0, 1)
+        self.groupBoxInputs.setLayout(g_layout)
+
+        self.groupBoxBtns = QGroupBox()
+        self.groupBoxBtns.setStyleSheet("QGroupBox{ border: 0px; }")
+
+        forSpacing1 = QWidget()
+        forSpacing2 = QWidget()
+        g2_layout = QGridLayout()
+        g2_layout.addWidget(forSpacing1, 0, 0)
+        g2_layout.addWidget(self.OK, 0, 1)
+        g2_layout.addWidget(self.Cancel, 0, 2)
+        g2_layout.addWidget(forSpacing2, 0, 3)
+        self.groupBoxBtns.setLayout(g2_layout)
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.groupBoxInputs)
+        vbox.addWidget(self.groupBoxBtns)
+        self.setLayout(vbox)
+
+
+    def getInputs(self):
+        return (self.A1.text())
+
 def main():
     app = QApplication(sys.argv)
 

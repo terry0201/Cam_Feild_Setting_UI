@@ -8,8 +8,11 @@ import os
 from utils import cal_reproject_error, sliding_window_calibrate, scatter_hist
 import cv2
 
+from lab_question import AddressDialog
+
 LabelPictureSize = (1500, 900)
 ButtonHeight = 40
+address=None
 img=None
 for_saving=None
 class calithread(QThread):
@@ -73,7 +76,8 @@ class calithread(QThread):
         self.wait()
 class VideoThread(QThread):
     change_pixmap_signal = Signal(np.ndarray)
-
+    connect_yes = Signal()
+    connect_no = Signal()
     def __init__(self):
         super().__init__()
         self._run_flag = False
@@ -83,7 +87,19 @@ class VideoThread(QThread):
         global LabelPictureSize 
         global img
         global for_saving
-        self.cap = cv2.VideoCapture(0)
+        global address
+        self.add=None
+        while(self.exit):
+            if(self.add!=address):
+              if(address=="0" or address=="1"):
+                  address=int(address)
+              self.cap = cv2.VideoCapture(address)
+              if(self.cap.isOpened()):
+                  self.connect_yes.emit()
+                  break
+              else:
+                  self.connect_no.emit()
+                  self.add=address
         while(self.exit):
           while self._run_flag:
               ret, cv_img = self.cap.read()
@@ -113,10 +129,9 @@ class CameraWidget(QWidget):
     def __init__(self, centralwidget):
         super().__init__()
         self.centralwidget = centralwidget
-        self.image = None
-        self.reserved_image= None
     def setupUi(self, MainWindow, basicFontSize):
         self.setObjectName(u"camerawidget")
+        self.BasicFontSize = basicFontSize
         basic_font = QFont(u"Arial", basicFontSize)
         title_font = QFont(u"Arial", basicFontSize + 2)
         self.setFont(basic_font) 
@@ -136,7 +151,7 @@ class CameraWidget(QWidget):
 
         self.label = QLabel(self.groupBox_2)
         self.label.setObjectName(u"label")
-        self.label.setText("This a test.This a test.THIS IS A TEST.THIS IS A TEST.THIS IS A TEST.THIS IS A TEST.THIS IS A TEST.THIS IS A TEST.THIS IS A TEST.THIS IS A TEST.")
+        self.label.setText("Please click button first.")
         self.label.move(20, 30)
         self.label.setFont(basic_font)
         self.label.setWordWrap(True)
@@ -150,17 +165,7 @@ class CameraWidget(QWidget):
         self.ButtonConnectCamera = QPushButton('Connect Camera', self.groupBox)
         self.ButtonConnectCamera.setObjectName(u"ButtonConnectCamera")
         self.ButtonConnectCamera.setFont(basic_font)
-        '''
-        self.ButtonCalibration = QPushButton('Calibration', self.groupBox)
-        self.ButtonCalibration.setObjectName(u"ButtonCalibration")
-        self.ButtonCalibration.setFont(font_Arial18)
-        # self.ButtonCalibration.setGeometry(QRect(20, 40+(ButtonHeight+10)*1, 200, ButtonHeight))
-
-        self.ButtonPlayPause = QPushButton('Play / Pause', self.groupBox)
-        self.ButtonPlayPause.setObjectName(u"ButtonPlayPause")
-        self.ButtonPlayPause.setFont(font_Arial18)
-        # self.ButtonPlayPause.setGeometry(QRect(20, 40+(ButtonHeight+10)*2, 200, ButtonHeight))
-        '''
+        
         self.ButtonChangeQWidget = QPushButton('Skip', self.groupBox)
         self.ButtonChangeQWidget.setObjectName(u"ButtonChangeQWidget")
         self.ButtonChangeQWidget.setFont(basic_font)
@@ -205,23 +210,39 @@ class CameraWidget(QWidget):
         self.status="Connect"
         self.saved_img=None
         self.cali_thread=calithread()
+        self.started=False
         self.thread = VideoThread()
         self.thread.change_pixmap_signal.connect(self.update_image)
-        self.thread.start()
+        self.thread.connect_yes.connect(self.after_connect)
+        self.thread.connect_no.connect(self.connect_error)
         self.MainWindow.ui.menubar.setEnabled(False)
         
     def ConnectCamera(self):
-        global LabelPictureSize # updated
+        global LabelPictureSize
+        global address
         LabelPictureSize = self.LabelCamera.size().toTuple()
         if(self.status=="Connect"):
            if(not self.CameraOpening):
-               self.thread.sstart()
-               self.CameraOpening=True
-               self.label.setText("Start Calibrating...")
-               self.timer.start(3000)
+                ad = AddressDialog(self.BasicFontSize)
+                okPressed = ad.exec()
+                if okPressed and ad.getInputs() :
+                    print("address: " + ad.getInputs())
+                    address = ad.getInputs()
+                    if(not self.started):
+                        self.thread.start()
+                        self.started=True
+                else :
+                    self.MainWindow.ui.ShowErrorToStatusbar('[ERROR] There is no input address')
+                    return
         elif(self.status=="PlayPause"):
            self.PlayPause()
-           
+    def after_connect(self):
+        self.thread.sstart()
+        self.CameraOpening=True
+        self.label.setText("Start Calibrating...")
+        self.timer.start(3000)
+    def connect_error(self):
+        self.MainWindow.ui.ShowErrorToStatusbar('[ERROR] Connect error')
     def start_cali(self):
         self.ButtonChangeQWidget.hide()
         self.timer.stop()
