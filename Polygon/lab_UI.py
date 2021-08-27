@@ -39,8 +39,8 @@ ClickedDetectSize = 10
 
 #!#############################################
 from lab_question import QuestionDialog
-
 from lab_camera_UI import CameraWidget
+from lab_plot import DraggablePloygonMarker
 #!#############################################
 from utils import set_font_size
 
@@ -67,6 +67,7 @@ class Ui_MainWindow(object):
         ]
         self.SoundClicked = QSound(u'Polygon/sounds/clicked.wav')
         self.SoundError = QSound(u'Polygon/sounds/error.wav')
+        self.pressInMarker = False
 
         app = QApplication.primaryScreen()
         dpi = app.logicalDotsPerInch()
@@ -551,21 +552,22 @@ class Ui_MainWindow(object):
         # status is None AND found a polygon
         self.set_status(self.ButtonTransformation, True)
 
-        # position text parser
+        # 讀取實際去量測的座標(手動輸入的)
         attr_text = self.tableWidget.item(idx, 1).text()
 
         attr = [e.strip('[](){} ') for e in attr_text.split(',')]
         # 先用 ',' 作分隔，再去除左右邊的括弧空格 '[](){} '
 
+        # 主畫面畫出的四個點(順序要跟實際座標給的順序要一樣 左上右上右下左下)
         src = np.array(self.attribute[i], np.float32) * self.resize
         src = src.reshape(-1, 2)
+        print("src: ",src)
         attr = np.float32(attr).reshape((4, 2))
-
         # calculate the matrix for real world, we will not use it!
         # self.SaveFile()
         self.matrix_pix_to_cm = cv2.getPerspectiveTransform(src, attr)
 
-        # calculte the ratio of pixel/cm
+        # 計算pixel轉成cm的比例
         ratio = 0
         for i in range(0, 3):
             ratio = ratio + self.size(src[i][0], src[i+1][0], src[i][1], src[i+1][1],
@@ -573,29 +575,34 @@ class Ui_MainWindow(object):
         ratio = ratio + self.size(src[0][0], src[3][0], src[0][1], src[3][1],
                                   attr[0][0], attr[3][0], attr[0][1], attr[3][1])
         ratio /= 4
-        # compute matrix for pixel to pixel
-        attr = attr * ratio  # change cm to pixel in the image
+        # 把實際座標(cm)轉成主畫面上(pixel)的座標
+        attr = attr * ratio
+        # 暫用的轉換矩陣
         matrix = cv2.getPerspectiveTransform(src, attr)
 
         img_w = self.image.shape[1]
         img_h = self.image.shape[0]
         ori = np.float32([[0, 0], [img_w, 0], [img_w, img_h], [0, img_h]])
+        # 利用剛剛的暫用的轉換矩陣算出要平移多少
         ox, oy = self.shift(ori, matrix)
-        # move the selected region to the center, and avoid some part of image be cut off
+        # 由於他們給的座標是以多邊形中心當原點，但是主畫面的座標是以左上角為原點，因此要平移成一樣的坐標系上
         for i in range(0, 4):
             attr[i][0] = attr[i][0] + ox
             attr[i][1] = attr[i][1] + oy
 
         width = int(2*ox)
         height = int(2*oy)
+        # 計算最終正確的轉換矩陣
         matrix = cv2.getPerspectiveTransform(src, attr)
+        
         # 轉換後能完整圖片，且將區塊置中
         result = cv2.warpPerspective(self.image, matrix, (width, height), cv2.INTER_LINEAR,
                                      borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0))
-
-        # show the result
+        
+        # 限制matplot show出圖片的大小在(1000,1000)
         fx = 1000 / int(width)
         fy = 1000 / int(height)
+        # 算出要縮放多少
         f = min(fx, fy)
 
         print(int(width)*f, int(height)*f)
@@ -604,23 +611,19 @@ class Ui_MainWindow(object):
         attr *= f
         # attr = attr.astype(int)  #! prevent error
 
-        # zoom in zoom out
-        plt.close('all')
-        self.fig = plt.figure(figsize=(10, 8))
-        self.fig.canvas.mpl_connect('scroll_event', self.call_back)
-        self.fig.canvas.mpl_connect('button_press_event', self.call_back)
+        print("ATTR: ", attr)
+        print("Which polygon: ", idx)
+        self.transformPolygonID = idx
+        self.transformAttr = attr
+        self.transformmatrix = matrix
+        self.transformf = f
+        # If four element in the array, the polygon will have one less side
+        self.arrForPlotX = np.array([attr[0][0], attr[1][0], attr[2][0], attr[3][0],attr[0][0], attr[1][0], attr[2][0], attr[3][0]])
+        self.arrForPlotY = np.array([attr[0][1], attr[1][1], attr[2][1], attr[3][1],attr[0][1], attr[1][1], attr[2][1], attr[3][1]])
+
+        self.pyplot = DraggablePloygonMarker(self.MainWindow, resized)
+        self.pyplot.setup()
         
-        plt.imshow(resized)
-        x = [attr[3][0], attr[0][0]]
-        y = [attr[3][1], attr[0][1]]
-        plt.plot(x, y, color="blue", linewidth=3)
-        for i in range(0, 3):
-            x = [attr[i][0], attr[i+1][0]]
-            y = [attr[i][1], attr[i+1][1]]
-            plt.plot(x, y, color="blue", linewidth=3)
-
-        plt.show(block=False)
-
         self.set_status(self.ButtonTransformation, False)
         if status_edit == 'edit':
             self.set_status(self.ButtonEdit, True)
@@ -812,6 +815,7 @@ class Ui_MainWindow(object):
         
         elif self.status == None:
             # Highlight corresponding table row
+            print("x: ",x,",y; ",y)
             if len(self.attribute) == 0:
                 return  # no polygon to highlight
 
@@ -911,25 +915,7 @@ class Ui_MainWindow(object):
         oy = max(y)
         return ox, oy
     
-    # for ToTrans matplot window 
-    def call_back(self, event):
-        axtemp = event.inaxes
-        x_min, x_max = axtemp.get_xlim()
-        y_min, y_max = axtemp.get_ylim()
-        fanwei = (x_max - x_min) / 10
-        fanwei2 = (y_max - y_min) / 10
 
-        if event.button == 'up':
-            axtemp.set(xlim=(x_min + fanwei, x_max - fanwei),
-                       ylim=(y_min + fanwei2, y_max - fanwei2))
-
-        elif event.button == 'down':
-            axtemp.set(xlim=(x_min - fanwei, x_max + fanwei),
-                       ylim=(y_min - fanwei2, y_max + fanwei2))
-
-        self.fig.canvas.draw_idle()
-
-    # ---- for transfrom ----
 
     def Draw(self):
         # for mouseMove, 'add_poly', tracing

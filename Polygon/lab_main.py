@@ -1,5 +1,5 @@
 import sys
-from PySide2.QtWidgets import QApplication, QMainWindow, QWidget
+from PySide2.QtWidgets import QApplication, QMainWindow
 from PySide2.QtCore import Qt
 from lab_UI import Ui_MainWindow
 
