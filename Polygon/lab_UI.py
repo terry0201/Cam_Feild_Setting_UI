@@ -615,8 +615,8 @@ class Ui_MainWindow(object):
         print("Which polygon: ", idx)
         self.transformPolygonID = idx
         self.transformAttr = attr
-        self.transformmatrix = matrix
-        self.transformf = f
+        self.transformMatrix = matrix
+        self.transformF = f
         # If four element in the array, the polygon will have one less side
         self.arrForPlotX = np.array([attr[0][0], attr[1][0], attr[2][0], attr[3][0],attr[0][0], attr[1][0], attr[2][0], attr[3][0]])
         self.arrForPlotY = np.array([attr[0][1], attr[1][1], attr[2][1], attr[3][1],attr[0][1], attr[1][1], attr[2][1], attr[3][1]])

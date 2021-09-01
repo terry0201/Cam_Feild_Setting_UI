@@ -146,3 +146,41 @@ def set_font_size(dpi, height, width):
         basicSize = basicSize + 3
     print("Basic Font Sie: ", basicSize)
     return int(basicSize)
+
+def set_pyplot_marker_size(markerSize, args, fig, ax):
+    """
+    Set marker size after scrolling.
+
+    Params : 
+        [float] markerSize : Zoom level. The user has set in the os preferences.
+        [dict] args : The pyplot-related data saved at the beginning.
+        [object] fig : The object of matplotlib.figure.Figure storing the top level container for all the plot elements.
+        [object] ax : The object of matplotlib.axes._subplots.AxesSubplot.
+        
+    Return :
+        [float] markerSize : The marker size after scrolling.
+        [dict] args : Update scale value after scrolling.
+    
+    src: 
+        https://stackoverflow.com/questions/48474699/marker-size-alpha-scaling-with-window-size-zoom-in-plot-scatter
+        
+    """
+    fw = fig.get_figwidth()
+    fh = fig.get_figheight()
+    fac1 = min(fw/args['figw'], fh/args['figh'])
+
+    xl = ax.get_xlim()
+    yl = ax.get_ylim()
+    fac2 = min(
+        abs(args['xlim'][1]-args['xlim'][0])/abs(xl[1]-xl[0]),
+        abs(args['ylim'][1]-args['ylim'][0])/abs(yl[1]-yl[0])
+    )
+
+    ##factor for marker size
+    facS = (fac1*fac2)/args['scale']
+
+    markerSize = markerSize*facS
+    
+    args['scale'] *= facS
+
+    return markerSize, args
