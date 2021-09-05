@@ -161,7 +161,7 @@ class DraggablePloygonMarker():
         They must be the same.     
         """
         plt.xlim(self.ax_dict['xlim'])
-        plt.ylim(self.ax_dict['ylim'])
+        plt.ylim((self.ax_dict['ylim'][1],self.ax_dict['ylim'][0]))
         image = cv2.cvtColor(self.resizedPic, cv2.COLOR_BGR2RGB) # color the pic
         pixels = np.array(image)
         plt.imshow(pixels)
