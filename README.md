@@ -17,6 +17,21 @@ an UI that can do
 ### exe
 > `pip install pyinstaller`
 > `pyinstaller -F lab_main.py [-n <Name> -c --icon=<Name.ico>]`
+- Structure
+```
+Root/Polygon/exe/
+                CameraFeild0826.exe     # 程式執行檔
+                CameraFeild0901.exe
+                CameraFeild0902.exe
+                project
+                ├── name.txt            # 建立多邊形name的列表
+                ├── address.txt         # 建立相機address的列表
+                ├── sound               # 使用到的音效
+                │   ├ clicked.wav 
+                │   ├ error.wav
+```
+
+註：如用此project自行打包，請將project資料夾名稱改為Polygon
 
 ### env:
 > `pip install PySide2`  
