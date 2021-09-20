@@ -15,6 +15,7 @@ an UI that can do
 - TODO: Camera 相關功能
 
 ### exe
+> `pip install pyinstaller`
 > `pyinstaller -F lab_main.py [-n <Name> -c --icon=<Name.ico>]`
 
 ### env:
