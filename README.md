@@ -14,6 +14,9 @@ an UI that can do
 - 完成: 讀檔、存檔、新增 | 編輯 | 刪除 多邊形、transform、多邊形 <-> table 雙向 Highlight
 - TODO: Camera 相關功能
 
+### exe
+> `pyinstaller -F lab_main.py [-n <Name> -c --icon=<Name.ico>]`
+
 ### env:
 > `pip install PySide2`  
 > `pip install opencv-python`  
