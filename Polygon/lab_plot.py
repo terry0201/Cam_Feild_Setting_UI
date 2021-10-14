@@ -45,7 +45,6 @@ class DraggablePloygonMarker():
             'scale' : 1.0,
         }
         self.markerSize = 7
-        # 測試其他範圍初始化=>同一圖片OK，換一張圖片隨便畫一個多邊形也OK
         self.radius = (xDiff * yDiff * (2.06155*(10 ** -5)) + 0.810779404)
 
     def connect(self):

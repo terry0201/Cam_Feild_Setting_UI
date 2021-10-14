@@ -1,10 +1,9 @@
 import sys
-from PySide2.QtWidgets import QWidget, QPushButton, QApplication, QLineEdit, QLabel, QGroupBox, QDialog, QComboBox, QGridLayout, QVBoxLayout
+from PySide2.QtWidgets import QWidget,QPlainTextEdit, QPushButton, QApplication, QLineEdit, QLabel, QGroupBox, QDialog, QComboBox, QGridLayout, QVBoxLayout
 from PySide2.QtGui import QFont
 
-
-
 class QuestionDialog(QDialog):
+    ComboSizeLimit = 700
     def __init__(self, basicFontSize):
         super().__init__()
         file=open("Polygon/name.txt","r")
@@ -21,13 +20,21 @@ class QuestionDialog(QDialog):
         self.LabelName = QLabel('Name:')
         self.LabelAttr = QLabel('Attribute:')
         
-        self.A1 = QLineEdit(self)
-        self.A2 = QLineEdit(self)
+        # self.A1 = QLineEdit(self)
+        self.A2 = QPlainTextEdit(self)
+        h = self.A2.minimumSizeHint().height()
+        print(h)
 
         self.Q1_Box = QComboBox(self)
+        self.Q1_Box.setEditable(True)
         self.Q1_Box.addItems(COMBO_BOX_ITEM)
-        self.Q1_Box.currentIndexChanged.connect(lambda: self.A1.setText(self.Q1_Box.currentText()))
-
+        width = self.Q1_Box.minimumSizeHint().width()
+        self.Q1_Box.setFixedWidth(width % self.ComboSizeLimit)
+        print("Old width: ", width)
+        self.Q1_Box.setFixedWidth(self.ComboSizeLimit)
+        self.A2.setFixedWidth(self.ComboSizeLimit)
+        print("NEW width: ", self.ComboSizeLimit)
+        
         # --------- Button ---------
         
         self.OK = QPushButton('OK', self)
@@ -39,7 +46,7 @@ class QuestionDialog(QDialog):
         self.OK.clicked.connect(self.accept)
         self.Cancel.clicked.connect(self.reject)
         
-        self.A1.setFont(font)
+        # self.A1.setFont(font)
         self.A2.setFont(font)
         self.Q1_Box.setFont(font)
         self.OK.setFont(font)
@@ -52,8 +59,9 @@ class QuestionDialog(QDialog):
 
         g_layout = QGridLayout()
         g_layout.addWidget(self.LabelName, 0, 0)
-        g_layout.addWidget(self.A1, 0, 1)
-        g_layout.addWidget(self.Q1_Box, 0, 2)
+        # g_layout.addWidget(self.A1, 0, 1)
+        # g_layout.addWidget(self.Q1_Box, 0, 2)
+        g_layout.addWidget(self.Q1_Box, 0, 1)
         g_layout.addWidget(self.LabelAttr, 1, 0)
         g_layout.addWidget(self.A2, 1, 1, 1, 2)
 
@@ -76,27 +84,49 @@ class QuestionDialog(QDialog):
         vbox.addWidget(self.groupBoxInputs)
         vbox.addWidget(self.groupBoxBtns)
         self.setLayout(vbox)
-
+        
         #!################################################################
 
     def getInputs(self):
-        return (self.A1.text(), self.A2.text())
+        # return (self.A1.text(), self.A2.text())
+        return (str(self.Q1_Box.currentText()), self.A2.toPlainText())
 
 class AddressDialog(QDialog):
+    ComboSizeLimit = 850
     def __init__(self, basicFontSize):
         super().__init__()
+
+        file=open("Polygon/address.txt","r")
+        read_file=file.read()
+        names=read_file.split("\n")
+        COMBO_BOX_ITEM = ['']
+        for i in range(len(names)):
+            COMBO_BOX_ITEM.append(names[i])
+        file.close()
+
         font = QFont('Arial', basicFontSize)
         self.setWindowTitle("RTSP Camera")
 
         self.LabelAddr = QLabel('Address:')
-        self.A1 = QLineEdit(self)
+        # self.A1 = QLineEdit(self)
+
+        self.Q1_Box = QComboBox(self)
+        self.Q1_Box.setEditable(True)
+        self.Q1_Box.addItems(COMBO_BOX_ITEM)
+        width = self.Q1_Box.minimumSizeHint().width()
+        print("Old width: ", width)
+        self.Q1_Box.setFixedWidth(self.ComboSizeLimit)
+        print("NEW width: ", self.ComboSizeLimit)
+
+
         self.OK = QPushButton('OK', self)
         self.Cancel = QPushButton('Cancel', self)
 
         self.OK.clicked.connect(self.accept)
         self.Cancel.clicked.connect(self.reject)
         
-        self.A1.setFont(font)
+        # self.A1.setFont(font)
+        self.Q1_Box.setFont(font)
         self.OK.setFont(font)
         self.Cancel.setFont(font)
         self.LabelAddr.setFont(font)
@@ -106,7 +136,9 @@ class AddressDialog(QDialog):
 
         g_layout = QGridLayout()
         g_layout.addWidget(self.LabelAddr, 0, 0)
-        g_layout.addWidget(self.A1, 0, 1)
+        # g_layout.addWidget(self.A1, 0, 1)
+        # g_layout.addWidget(self.Q1_Box, 0, 2)
+        g_layout.addWidget(self.Q1_Box, 0, 1)
         self.groupBoxInputs.setLayout(g_layout)
 
         self.groupBoxBtns = QGroupBox()
@@ -126,22 +158,23 @@ class AddressDialog(QDialog):
         vbox.addWidget(self.groupBoxBtns)
         self.setLayout(vbox)
 
-
     def getInputs(self):
-        return (self.A1.text())
+        return str(self.Q1_Box.currentText())
 
 def main():
     app = QApplication(sys.argv)
 
     ex = QuestionDialog(16)
     a = ex.show()
-    
-    if a == QDialog.Accepted:
-        print('accepted!')
-    elif a == QDialog.Rejected:
-        print('rejected!')
+    # ex = QuestionDialog(16)
+    # a = ex.show()
 
-    print(ex.getInputs())
+    # if a == QDialog.Accepted:
+    #     print('accepted!')
+    # elif a == QDialog.Rejected:
+    #     print('rejected!')
+
+    # print(ex.getInputs())
 
     # ex.setGeometry(800, 600, 200, 200)
     sys.exit(app.exec_())
