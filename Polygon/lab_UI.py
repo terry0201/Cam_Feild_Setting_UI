@@ -555,7 +555,7 @@ class Ui_MainWindow(object):
         # 讀取實際去量測的座標(手動輸入的)
         attr_text = self.tableWidget.item(idx, 1).text()
 
-        attr = [e.strip('[](){} ') for e in attr_text.split(',')]
+        attr = [e.strip('[](){} \n') for e in attr_text.split(',')]
         # 先用 ',' 作分隔，再去除左右邊的括弧空格 '[](){} '
 
         # 主畫面畫出的四個點(順序要跟實際座標給的順序要一樣 左上右上右下左下)

@@ -1,0 +1,8 @@
+TRANS
+TREE
+car
+bicycle
+motorcycle
+bus
+train
+truck
