@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils import set_pyplot_marker_size
 
-class DraggablePloygonMarker():
+class DraggablePolygonMarker():
     def __init__(self, MainWindow, resizedPic):
         super().__init__()
         self.press = None

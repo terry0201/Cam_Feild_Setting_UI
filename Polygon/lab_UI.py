@@ -38,9 +38,9 @@ ButtonHeight = 40
 ClickedDetectSize = 10
 
 #!#############################################
-from lab_question import QuestionDialog
+from lab_question import QuestionDialog, EditPolygonData
 from lab_camera_UI import CameraWidget
-from lab_plot import DraggablePloygonMarker
+from lab_plot import DraggablePolygonMarker
 #!#############################################
 from utils import set_font_size
 
@@ -131,7 +131,9 @@ class Ui_MainWindow(object):
         self.tableWidget.setHorizontalHeaderItem(0, QTableWidgetItem())
         self.tableWidget.setHorizontalHeaderItem(1, QTableWidgetItem())
         self.tableWidget.setObjectName(u"tableWidget")
+        self.tableWidget.setEditTriggers( QAbstractItemView.NoEditTriggers)
         self.tableWidget.selectionModel().selectionChanged.connect(self.TableSelectionChange)
+        self.tableWidget.doubleClicked.connect(self.edit_polygon_attr_name)
         self.tableWidget.horizontalHeaderItem(0).setText(u"Name")
         self.tableWidget.horizontalHeaderItem(1).setText(u"Attribute")
 
@@ -226,6 +228,32 @@ class Ui_MainWindow(object):
         
         self.centralwidget.keyPressEvent = self.keyPress
     # setupUi
+
+    def edit_polygon_attr_name(self, event):
+        self.tableWidget.clearSelection()
+        row = event.row()
+        column = event.column()
+        data = event.data()
+        if column == 0: # sibling ATTR
+            sibling = event.siblingAtColumn(column+1)
+            attr = sibling.data()
+            name = data
+            # print(attr)
+            # print(name)
+        else: # NAME
+            sibling = event.siblingAtColumn(column-1)
+            attr = data
+            name = sibling.data()
+            # print(attr)
+            # print(name)
+        editPolygon = EditPolygonData(self.BasicFontSize, name, attr)
+        okPressed = editPolygon.exec()
+        if okPressed == QDialog.Accepted:
+            new_name = editPolygon.getInputs()[0]
+            new_attr = editPolygon.getInputs()[1]
+            self.tableWidget.item(row, 0).setText(new_name)
+            self.tableWidget.item(row, 1).setText(new_attr)
+            
 
     def keyPress(self, event):
         if event.key() == Qt.Key_Escape:
@@ -335,7 +363,7 @@ class Ui_MainWindow(object):
         for obj in root.iter('object'):
             # get data
             name = obj.find('name').text
-            attribute = obj.find('attribute').text
+            attribute = obj.find('attributes').text
             print(f'get obj name: {name}')
 
             row = self.tableWidget.rowCount()
@@ -456,12 +484,13 @@ class Ui_MainWindow(object):
             root = ET.Element('annotation')
             filename = ET.SubElement(root, 'filename')
             filename.text = self.full_pic_path.split('/')[-1]
+            # polygonDict = {}   
             for i in range(self.tableWidget.rowCount()):
                 object = ET.SubElement(root, 'object')
                 
                 name = ET.SubElement(object, 'name')
                 name.text = self.tableWidget.item(i, 0).text()
-                attribute = ET.SubElement(object, 'attribute')
+                attribute = ET.SubElement(object, 'attributes')
                 attribute.text = self.tableWidget.item(i, 1).text()
                 polygon = ET.SubElement(object, 'polygon')
                 # print('Attr:', self.attribute)
@@ -471,6 +500,11 @@ class Ui_MainWindow(object):
                     x.text = str(pos_x * self.resize)
                     y = ET.SubElement(pt, 'y')
                     y.text = str(pos_y * self.resize)
+                
+                # polygonDict[name.text] = np.array(self.attribute[i]) * self.resize
+
+            # np.save(self.full_pic_path.rsplit('.')[0] + '_dectect.npy', polygonDict) 
+            # print(f'save transfrom matrix to: [{self.full_pic_path.rsplit(".")[0] + "_dectect.npy"}]')
             
             tree = ET.ElementTree(root)
             tree.write(self.full_xml_path, encoding="utf-8")
@@ -479,6 +513,11 @@ class Ui_MainWindow(object):
             if self.matrix_pix_to_cm is not None:
                 np.save(self.full_pic_path.rsplit('.')[0] + '.npy', self.matrix_pix_to_cm)
                 print(f'save transfrom matrix to: [{self.full_pic_path.rsplit(".")[0] + ".npy"}]')
+
+            self.save_xml_notice = QMessageBox.information(
+                self.centralwidget, 'Save Notice',
+                'You have saved the information about the picture!',
+                QMessageBox.Ok)
 
         # camera Calibration 畫面
         elif self.MainWindow.centralWidget().objectName() == 'camerawidget':
@@ -523,110 +562,118 @@ class Ui_MainWindow(object):
 
     # connect to --> self.ButtonTransformation
     def ToTrans(self):
-        if self.pixHeight is None:  # don't read a file
-            self.ShowErrorToStatusbar(f'[ERROR] not read a picture yet but clicked [Transformation]')
-            return
+        try :
+            if self.pixHeight is None:  # don't read a file
+                self.ShowErrorToStatusbar(f'[ERROR] not read a picture yet but clicked [Transformation]')
+                return
 
-        if self.status == 'trans':
-            return
-        elif self.status is not None and self.status != 'edit':  # 唯一可以跳過去 trans 的狀態就是 'edit'
-            self.ShowErrorToStatusbar(f'[ERROR] try to set status [trans] on while status [{self.status}] on')
-            return
+            if self.status == 'trans':
+                return
+            elif self.status is not None and self.status != 'edit':  # 唯一可以跳過去 trans 的狀態就是 'edit'
+                self.ShowErrorToStatusbar(f'[ERROR] try to set status [trans] on while status [{self.status}] on')
+                return
 
-        status_edit = self.status  # None or 'edit'
+            status_edit = self.status  # None or 'edit'
 
-        idx = -1
-        for i in range(self.tableWidget.rowCount()):
-            if self.tableWidget.item(i, 0).text() == 'TRANS':
-                idx = i
-                break
-        if idx == -1:
-            # not found
-            self.ShowErrorToStatusbar('[ERROR] polygon with name [TRANS] not found')
-            return
+            idx = -1
+            for i in range(self.tableWidget.rowCount()):
+                if self.tableWidget.item(i, 0).text() == 'TRANS':
+                    idx = i
+                    break
+            if idx == -1:
+                # not found
+                self.ShowErrorToStatusbar('[ERROR] polygon with name [TRANS] not found')
+                return
 
-        if len(self.attribute[idx]) != 4:
-            self.ShowErrorToStatusbar(f'[ERROR] polygon with node: {self.attribute[idx]}, expected: 4')
-            return
+            if len(self.attribute[idx]) != 4:
+                self.ShowErrorToStatusbar(f'[ERROR] polygon with node: {self.attribute[idx]}, expected: 4')
+                return
 
-        # status is None AND found a polygon
-        self.set_status(self.ButtonTransformation, True)
+            # status is None AND found a polygon
+            self.set_status(self.ButtonTransformation, True)
 
-        # 讀取實際去量測的座標(手動輸入的)
-        attr_text = self.tableWidget.item(idx, 1).text()
+            # 讀取實際去量測的座標(手動輸入的)
+            attr_text = self.tableWidget.item(idx, 1).text()
 
-        attr = [e.strip('[](){} \n') for e in attr_text.split(',')]
-        # 先用 ',' 作分隔，再去除左右邊的括弧空格 '[](){} '
+            attr = [e.strip('[](){} \n') for e in attr_text.split(',')]
+            # 先用 ',' 作分隔，再去除左右邊的括弧空格 '[](){} \n'
 
-        # 主畫面畫出的四個點(順序要跟實際座標給的順序要一樣 左上右上右下左下)
-        src = np.array(self.attribute[i], np.float32) * self.resize
-        src = src.reshape(-1, 2)
-        print("src: ",src)
-        attr = np.float32(attr).reshape((4, 2))
-        # calculate the matrix for real world, we will not use it!
-        # self.SaveFile()
-        self.matrix_pix_to_cm = cv2.getPerspectiveTransform(src, attr)
+            # 主畫面畫出的四個點(順序要跟實際座標給的順序要一樣 左上右上右下左下)
+            src = np.array(self.attribute[i], np.float32) * self.resize
+            src = src.reshape(-1, 2)
+            print("src: ",src)
+            attr = np.float32(attr).reshape((4, 2))
+            # calculate the matrix for real world, we will not use it!
+            # self.SaveFile()
+            self.matrix_pix_to_cm = cv2.getPerspectiveTransform(src, attr)
 
-        # 計算pixel轉成cm的比例
-        ratio = 0
-        for i in range(0, 3):
-            ratio = ratio + self.size(src[i][0], src[i+1][0], src[i][1], src[i+1][1],
-                                      attr[i][0], attr[i+1][0], attr[i][1], attr[i+1][1])
-        ratio = ratio + self.size(src[0][0], src[3][0], src[0][1], src[3][1],
-                                  attr[0][0], attr[3][0], attr[0][1], attr[3][1])
-        ratio /= 4
-        # 把實際座標(cm)轉成主畫面上(pixel)的座標
-        attr = attr * ratio
-        # 暫用的轉換矩陣
-        matrix = cv2.getPerspectiveTransform(src, attr)
+            # 計算pixel轉成cm的比例
+            ratio = 0
+            for i in range(0, 3):
+                ratio = ratio + self.size(src[i][0], src[i+1][0], src[i][1], src[i+1][1],
+                                        attr[i][0], attr[i+1][0], attr[i][1], attr[i+1][1])
+            ratio = ratio + self.size(src[0][0], src[3][0], src[0][1], src[3][1],
+                                    attr[0][0], attr[3][0], attr[0][1], attr[3][1])
+            ratio /= 4
+            # 把實際座標(cm)轉成主畫面上(pixel)的座標
+            attr = attr * ratio
+            # 暫用的轉換矩陣
+            matrix = cv2.getPerspectiveTransform(src, attr)
 
-        img_w = self.image.shape[1]
-        img_h = self.image.shape[0]
-        ori = np.float32([[0, 0], [img_w, 0], [img_w, img_h], [0, img_h]])
-        # 利用剛剛的暫用的轉換矩陣算出要平移多少
-        ox, oy = self.shift(ori, matrix)
-        # 由於他們給的座標是以多邊形中心當原點，但是主畫面的座標是以左上角為原點，因此要平移成一樣的坐標系上
-        for i in range(0, 4):
-            attr[i][0] = attr[i][0] + ox
-            attr[i][1] = attr[i][1] + oy
+            img_w = self.image.shape[1]
+            img_h = self.image.shape[0]
+            ori = np.float32([[0, 0], [img_w, 0], [img_w, img_h], [0, img_h]])
+            # 利用剛剛的暫用的轉換矩陣算出要平移多少
+            ox, oy = self.shift(ori, matrix)
+            # 由於他們給的座標是以多邊形中心當原點，但是主畫面的座標是以左上角為原點，因此要平移成一樣的坐標系上
+            for i in range(0, 4):
+                attr[i][0] = attr[i][0] + ox
+                attr[i][1] = attr[i][1] + oy
 
-        width = int(2*ox)
-        height = int(2*oy)
-        # 計算最終正確的轉換矩陣
-        matrix = cv2.getPerspectiveTransform(src, attr)
-        
-        # 轉換後能完整圖片，且將區塊置中
-        result = cv2.warpPerspective(self.image, matrix, (width, height), cv2.INTER_LINEAR,
-                                     borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0))
-        
-        # 限制matplot show出圖片的大小在(1000,1000)
-        fx = 1000 / int(width)
-        fy = 1000 / int(height)
-        # 算出要縮放多少
-        f = min(fx, fy)
+            width = int(2*ox)
+            height = int(2*oy)
+            # 計算最終正確的轉換矩陣
+            matrix = cv2.getPerspectiveTransform(src, attr)
+            
+            # 轉換後能完整圖片，且將區塊置中
+            result = cv2.warpPerspective(self.image, matrix, (width, height), cv2.INTER_LINEAR,
+                                        borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0))
+            
+            # 限制matplot show出圖片的大小在(1000,1000)
+            fx = 1000 / int(width)
+            fy = 1000 / int(height)
+            # 算出要縮放多少
+            f = min(fx, fy)
 
-        print(int(width)*f, int(height)*f)
-        resized = cv2.resize(result, None, fx=f, fy=f,
-                             interpolation=cv2.INTER_AREA)
-        attr *= f
-        # attr = attr.astype(int)  #! prevent error
+            print(int(width)*f, int(height)*f)
+            resized = cv2.resize(result, None, fx=f, fy=f,
+                                interpolation=cv2.INTER_AREA)
+            attr *= f
+            # attr = attr.astype(int)  #! prevent error
 
-        print("ATTR: ", attr)
-        print("Which polygon: ", idx)
-        self.transformPolygonID = idx
-        self.transformAttr = attr
-        self.transformMatrix = matrix
-        self.transformF = f
-        # If four element in the array, the polygon will have one less side
-        self.arrForPlotX = np.array([attr[0][0], attr[1][0], attr[2][0], attr[3][0],attr[0][0], attr[1][0], attr[2][0], attr[3][0]])
-        self.arrForPlotY = np.array([attr[0][1], attr[1][1], attr[2][1], attr[3][1],attr[0][1], attr[1][1], attr[2][1], attr[3][1]])
+            print("ATTR: ", attr)
+            print("Which polygon: ", idx)
+            self.transformPolygonID = idx
+            self.transformAttr = attr
+            self.transformMatrix = matrix
+            self.transformF = f
+            # If four element in the array, the polygon will have one less side
+            self.arrForPlotX = np.array([attr[0][0], attr[1][0], attr[2][0], attr[3][0],attr[0][0], attr[1][0], attr[2][0], attr[3][0]])
+            self.arrForPlotY = np.array([attr[0][1], attr[1][1], attr[2][1], attr[3][1],attr[0][1], attr[1][1], attr[2][1], attr[3][1]])
 
-        self.pyplot = DraggablePloygonMarker(self.MainWindow, resized)
-        self.pyplot.setup()
-        
-        self.set_status(self.ButtonTransformation, False)
-        if status_edit == 'edit':
-            self.set_status(self.ButtonEdit, True)
+            self.pyplot = DraggablePolygonMarker(self.MainWindow, resized)
+            self.pyplot.setup()
+            
+            self.set_status(self.ButtonTransformation, False)
+            if status_edit == 'edit':
+                self.set_status(self.ButtonEdit, True)
+        except:
+            self.save_xml_notice = QMessageBox.warning(
+                self.centralwidget, 'Error', 'An error occurred while transforming.')
+            if self.save_xml_notice == QMessageBox.Ok:
+                self.set_status(self.ButtonTransformation, False)
+                if status_edit == 'edit':
+                    self.set_status(self.ButtonEdit, True)
 
     # connect to --> self.ButtonRemove
     def DelPolygon(self):
