@@ -15,7 +15,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self.ui.camerawidget.thread.stop()
-        self.ui.camerawidget.cali_thread.stop()
+        # self.ui.camerawidget.cali_thread.stop()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -25,3 +25,5 @@ if __name__ == "__main__":
     sys.exit(app.exec_())
 
 # [-1, -1], [1, -1], [1, 1], [-1, 1]
+# [-1.00000000000000000000, -1.00000000000000000000], [1.00000000000000000000, -1.00000000000000000000], [1.00000000000000000000, 1.00000000000000000000], [-1.00000000000000000000, 1.00000000000000000000]
+# yolo car label: ['bicycle', 'car', 'motorcycle', 'bus', 'train', 'truck']

@@ -1,8 +1,8 @@
 TRANS
 TREE
-CAR
-AAAAA
-BBBBBB
-CCCCCCC
-DDDDDDDD
-5566
+car
+bicycle
+motorcycle
+bus
+train
+truck
