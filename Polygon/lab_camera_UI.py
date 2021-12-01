@@ -392,7 +392,7 @@ class CameraWidget(QWidget):
             save_file = open(pickle_filename[0],'wb')
             pickle.dump(self.capture_param, save_file)   
             # print('Save picture to {}'.format(pickle_filename[0]))
-            self.change_word('Save picture to {}'.format(pickle_filename[0]))
+            self.change_word('Save pickle to {}'.format(pickle_filename[0]))
         else :
             self.MainWindow.ui.ShowErrorToStatusbar('[ERROR] There is no input pickle name.')
             return

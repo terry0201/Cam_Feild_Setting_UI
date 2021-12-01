@@ -208,15 +208,26 @@ class EditPolygonData(QDialog):
     ComboSizeLimit = 700
     def __init__(self, basicFontSize, name, attr):
         super().__init__()
-
+        file=open("Polygon/name.txt","r")
+        read_file=file.read()
+        names=read_file.split("\n")
+        COMBO_BOX_ITEM = ['']
+        for i in range(len(names)):
+            COMBO_BOX_ITEM.append(names[i])
+        file.close()
         font = QFont('Arial', basicFontSize)
         # --------------------------
         self.LabelName = QLabel('Name:')
         self.LabelAttr = QLabel('Attribute:')
         
-        self.A1 = QLineEdit(self)
+        self.A1 = QComboBox(self)
+        self.A1.setEditable(True)
+        self.A1.addItems(COMBO_BOX_ITEM)
+
+        # self.A1 = QLineEdit(self)
         self.A2 = QPlainTextEdit(self)
-        self.A1.setText(name)
+        self.A1.setEditText(name)
+        # self.A1.setText(name)
         self.A2.setPlainText(attr)
         self.A1.setFixedWidth(self.ComboSizeLimit)
         self.A2.setFixedWidth(self.ComboSizeLimit)
@@ -269,7 +280,7 @@ class EditPolygonData(QDialog):
 
     def getInputs(self):
         # return (self.A1.text(), self.A2.text())
-        return (str(self.A1.text()), self.A2.toPlainText())
+        return (str(self.A1.currentText()), self.A2.toPlainText())
         
 def main():
     app = QApplication(sys.argv)
