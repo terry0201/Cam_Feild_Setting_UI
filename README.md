@@ -60,6 +60,8 @@ Root/Polygon/exe/
 
 備註3: 執行detect.py前需將video放置在yolor/inference/images/資料夾下，且xml需放置在yolor/xml_dir/資料夾下  
 
+備註4: detect.py中使用到的weights、video、xml路徑需以detect.py為基準點  
+
 ## Reference
 - [PySide2教學](https://medium.com/bucketing/pyside2-pyqt-tutorial-3c2be590bc6a)
 - [OpenCV Camera Calibration](https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_calib3d/py_calibration/py_calibration.html)
