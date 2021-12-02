@@ -9,7 +9,7 @@ import time
 import os
 
 
-def capture(frame_count=8, input_address=0):        #frame_counter=> how many frames in total
+def capture(frame_count=20, input_address=0):        #frame_counter=> how many frames in total
     
     #type-in file name
     # timetup = time.localtime()
@@ -79,19 +79,18 @@ def capture(frame_count=8, input_address=0):        #frame_counter=> how many fr
                     #cv2.imwrite('./{}/output{}.jpg'.format(file_name,counter), gray)
                     #above part for finding chessboard, append points, save picture
 
-                    imgpoints, objpoints, packed_tmp, ret_tmp, mtx_tmp, dist_tmp, rvecs_tmp, tvecs_tmp, all_error_tmp, reprojection_error_tmp \
+                    imgpoints, objpoints, packed_tmp, ret_tmp, mtx_tmp, dist_tmp, rvecs_tmp, tvecs_tmp, all_error_tmp, mean_error_tmp \
                         = calculate_parameters(objpoints, imgpoints, img_size, counter-pic_del, frame_count, eliminate=False)
 
                     p_imgpoints = parse_imgpoints(imgpoints)    #resize from (n, 49, 1, 2) <class 'list'> to (49n, 2) <class 'list'>
-                    uncovered_pixel, discard = pick_corner_find_uncovered_pixel(p_imgpoints, counter, pic_del, pixel)
+                    uncovered_pixel, discard = pick_corner_find_uncovered_pixel(p_imgpoints, counter, pic_del, pixel) 
                     del_history.append(discard)
 
                     print("error for each frame:{}".format(all_error_tmp))
                     error_avg = np.average(all_error_tmp)
                     error_std = np.std(all_error_tmp)
-                    print("average:", error_avg)     # average error = reprojection error 
+                    print("average:", error_avg)     
                     print("standard:", error_std)
-                    #print("reprojection_error:{}".format(reprojection_error_tmp))
                     pixel = uncovered_pixel
 
                     if counter == 10:
@@ -126,7 +125,6 @@ def capture(frame_count=8, input_address=0):        #frame_counter=> how many fr
                         #print("block {} : {}     coverage : {}/{} = {}".format(i, block[i], initial_pixel[i]-count_pixel, initial_pixel[i], block_coverage[i]))
                     pixel_num = len(pixel)
                     coverage_tmp = (init_pixel_number - pixel_num)/init_pixel_number
-                    #print("整體覆蓋率: {}".format(coverage_tmp))
 
                     qualify = 0
                     for i in range(len(block_coverage)):
@@ -136,7 +134,7 @@ def capture(frame_count=8, input_address=0):        #frame_counter=> how many fr
                     if counter >= 10:
                         if qualify == len(block_coverage):
                             print("\n\n end \n\n")
-                            cap.release()           #release the camera
+                            cap.release()       #release the camera
                             cv2.destroyAllWindows()
                             break
                     if counter == frame_count:  #meet the number of frames defined in the begining
@@ -150,9 +148,8 @@ def capture(frame_count=8, input_address=0):        #frame_counter=> how many fr
             #print("\na frame will be captured in three seconds\n")
 
     # scatter_hist(imgpoints, _width, _height)
-    fixed_param = {'ret':ret_tmp, 'mtx': mtx_tmp, 'dist': dist_tmp, 'rvecs': rvecs_tmp, 'tvecs': tvecs_tmp, \
-        'error':all_error_tmp, 'reprojection_error': reprojection_error_tmp, 'block_num': block_num, \
-         'block_coverage': block_coverage, 'coverage': coverage_tmp, 'picture_deleted': pic_del}
+    fixed_param = {'img_points':imgpoints, 'ret':ret_tmp, 'mtx':mtx_tmp, 'dist':dist_tmp, 'rvecs':rvecs_tmp, 'tvecs':tvecs_tmp, \
+        'error':all_error_tmp, 'mean_error':mean_error_tmp, 'block_coverage':block_coverage, 'coverage':coverage_tmp}
     #print("fixed_param:\n",fixed_param)
 
     return fixed_param
@@ -195,7 +192,7 @@ def parse_imgpoints(imgpoints):     #sub_function used by dimension statistic
     # print(type(pts))
     return pts
 
-
+"""
 #use parameters to calculate reprojection error
 def cal_reproject_error(imgpoints, objpoints, rvecs, tvecs, mtx, dist):
     sum_error = 0
@@ -206,11 +203,12 @@ def cal_reproject_error(imgpoints, objpoints, rvecs, tvecs, mtx, dist):
     #print( "reprojection error: {}".format(sum_error/len(objpoints)))
     reprojection_error = sum_error/len(objpoints)
     return reprojection_error
+"""
 
 #use frames to calculate every parameters
 def calculate_parameters(objpoints, imgpoints, img_size, cur_count, total, eliminate=False):
     #reprojection_error = None
-    packed_tmp = ret_tmp, mtx_tmp, dist_tmp, rvecs_tmp, tvecs_tmp = cv2.calibrateCamera(objpoints[:], imgpoints[:], #using 1~last as new dataset, eliminate the first entry
+    packed_tmp = ret_tmp, mtx_tmp, dist_tmp, rvecs_tmp, tvecs_tmp = cv2.calibrateCamera(objpoints[:], imgpoints[:], 
                                                                                         img_size, None, None)
     all_error_tmp=[]
     for i in range(len(objpoints)):
@@ -218,9 +216,9 @@ def calculate_parameters(objpoints, imgpoints, img_size, cur_count, total, elimi
         error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2)/len(imgpoints2)
         all_error_tmp.append(error) # all_error: 由每張frame各自的error所組成的array
 
-    reprojection_error_tmp = sum(all_error_tmp)/len(all_error_tmp)
+    mean_error_tmp = sum(all_error_tmp)/len(all_error_tmp)
 
-    return imgpoints[:], objpoints[:], packed_tmp, ret_tmp, mtx_tmp, dist_tmp, rvecs_tmp, tvecs_tmp, all_error_tmp, reprojection_error_tmp
+    return imgpoints[:], objpoints[:], packed_tmp, ret_tmp, mtx_tmp, dist_tmp, rvecs_tmp, tvecs_tmp, all_error_tmp, mean_error_tmp
 
 
 def _pixel(_wid0th, _width, _hei0ght, _height):
@@ -339,7 +337,7 @@ def draw_block(frame, block, block_cover):
             cv2.rectangle(frame, (block[i][0], block[i][3]), (block[i][1], block[i][2]), color = (0, 0, 255), thickness = 1)
         else:
             cv2.rectangle(frame, (block[i][0], block[i][3]), (block[i][1], block[i][2]), color = (0, 255, 0), thickness = 2)
-       
+
 
 def set_font_size(dpi, height, width):
     """
