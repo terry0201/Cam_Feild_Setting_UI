@@ -58,7 +58,7 @@ Root/Polygon/exe/
 
 備註2: 執行video_process.py前需將video放置在yolor/inference/images/資料夾下  
 
-備註3: 執行detect.py前需將video放置在yolor/inference/images/路徑下，且xml需放置在yolor/xml_dir/資料夾下  
+備註3: 執行detect.py前需將video放置在yolor/inference/images/資料夾下，且xml需放置在yolor/xml_dir/資料夾下  
 
 ## Reference
 - [PySide2教學](https://medium.com/bucketing/pyside2-pyqt-tutorial-3c2be590bc6a)
