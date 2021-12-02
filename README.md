@@ -29,7 +29,6 @@ Root/Polygon/exe/
                 │   ├ error.wav
 ```
 
-
 ### env:
 > `pip install PySide2`  
 > `pip install opencv-python`  
@@ -38,6 +37,30 @@ Root/Polygon/exe/
 > `pip install matplotlib`
 
 備註: .xml(多邊形資料) / .npy(transform 矩陣) 會儲存在與圖片相同資料夾底下
+
+## Object detection
+
+#### 切割video中的第一張frame:
+> `python video_process.py --video_name street1.mp4` 
+
+
+#### 判定封閉範圍內是否有交通工具:
+> `python detect.py --source inference/images/street1.mp4 --weights yolor_p6.pt --min_inter_area_ratio 0.4 --handcraft_polygon_xml_path xml_dir/street1.xml`  
+
+
+### env:
+> `pip install -r requirements.txt`  
+> `pip install torch==1.7.1+cu101 torchvision==0.8.2+cu101 torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html`  
+> `pip install git+https://github.com/philferriere/cocoapi.git#subdirectory=PythonAPI`  
+
+
+備註1: 需要在yolor資料夾路徑下pip install環境(在yolor資料夾內才有requirements.txt)  
+
+備註2: 執行video_process.py前需將video放置在yolor/inference/images/資料夾下  
+
+備註3: 執行detect.py前需將video放置在yolor/inference/images/資料夾下，且xml需放置在yolor/xml_dir/資料夾下  
+
+備註4: detect.py中使用到的weights、video、xml路徑需以detect.py為基準點  
 
 ## Reference
 - [PySide2教學](https://medium.com/bucketing/pyside2-pyqt-tutorial-3c2be590bc6a)
