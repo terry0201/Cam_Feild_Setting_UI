@@ -36,8 +36,8 @@ def capture(frame_count=8, input_address=0):        #frame_counter=> how many fr
         cur_time = time.time()
         ret, frame = cap.read()
         if setting == True and cur_time-start_time < 2.9:
-            text = "{}".format(round( 3-(cur_time-start_time),1) )
-            cv2.putText(frame, text, (245, 270), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 255), 2, cv2.LINE_AA)
+            text = "{}".format(int(round( 3-(cur_time-start_time),0)) )
+            cv2.putText(frame, text, (285, 270), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 255), 2, cv2.LINE_AA)
             draw_block(frame, block, block_coverage)
         if setting == False:
             cv2.putText(frame, "setting", (260, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 255), 1, cv2.LINE_AA)
@@ -94,10 +94,10 @@ def capture(frame_count=8, input_address=0):        #frame_counter=> how many fr
                     #print("reprojection_error:{}".format(reprojection_error_tmp))
                     pixel = uncovered_pixel
 
-                    if counter == 5:
+                    if counter == 10:
                         print("check")
                         for i in range(counter-1, -1, -1):
-                            if all_error_tmp[i] >= error_avg + error_std:
+                            if all_error_tmp[i] >= error_avg + 2*error_std:
                                 imgpoints.pop(i)
                                 objpoints.pop(i)
                                 all_error_tmp.pop(i)
@@ -107,7 +107,7 @@ def capture(frame_count=8, input_address=0):        #frame_counter=> how many fr
                                 print("delete")
                                 pic_del += 1
                         print("error for each frame (deleted):{}".format(all_error_tmp))
-                    if counter >5:
+                    if counter >10:
                         if all_error_tmp[-1] >= error_avg + 2*error_std:
                             imgpoints.pop(-1)
                             objpoints.pop(-1)
@@ -150,9 +150,9 @@ def capture(frame_count=8, input_address=0):        #frame_counter=> how many fr
             #print("\na frame will be captured in three seconds\n")
 
     # scatter_hist(imgpoints, _width, _height)
-    fixed_param = {'ret':ret_tmp, 'mtx': mtx_tmp, 'dist': dist_tmp, 'rvecs':rvecs_tmp, 'tvecs':tvecs_tmp,
-     'error':all_error_tmp, 'reprojection error': reprojection_error_tmp, 
-     'pixel number': init_pixel_number, 'uncovered pixel number': pixel_num, 'coverage': coverage_tmp}
+    fixed_param = {'ret':ret_tmp, 'mtx': mtx_tmp, 'dist': dist_tmp, 'rvecs': rvecs_tmp, 'tvecs': tvecs_tmp, \
+        'error':all_error_tmp, 'reprojection_error': reprojection_error_tmp, 'block_num': block_num, \
+         'block_coverage': block_coverage, 'coverage': coverage_tmp, 'picture_deleted': pic_del}
     #print("fixed_param:\n",fixed_param)
 
     return fixed_param
@@ -169,7 +169,7 @@ def get_new_calibrate_img(img, fixed_param):
     
     mtx = fixed_param['mtx']
     dist = fixed_param['dist']
-    # reprojection_error = fixed_param['reprojection error']
+    # reprojection_error = fixed_param['reprojection_error']
     # print("file name: ", file_name)
     # print(fixed_param)
 
@@ -224,7 +224,7 @@ def calculate_parameters(objpoints, imgpoints, img_size, cur_count, total, elimi
 
 
 def _pixel(_wid0th, _width, _hei0ght, _height):
-    spacing = 10
+    spacing = 2
     pixel_width = math.floor(((_width-_wid0th)+spacing/2)/spacing) 
     pixel_height = math.floor(((_height-_hei0ght)+spacing/2)/spacing)
     pixel=[]
@@ -262,7 +262,7 @@ def pick_corner_find_uncovered_pixel(p_imgpoints, counter, t, pixel):
     return new_pixel, save_discard      #這裡的new_pixel為還沒被任何一張覆蓋的pixel, save_discard為這張照片所覆蓋的pixel
 
 def show_block(_width, _height):
-    side_num1 = 6                                      #長邊(預設x)切成幾塊
+    side_num1 = 4                                      #長邊(預設x)切成幾塊
     block_length1 = max(_width, _height)//side_num1 
     side_num2 = min(_width, _height)//block_length1+1  #短邊(預設y)切成幾塊
     block_length2 = min(_width, _height)//side_num2
