@@ -484,6 +484,14 @@ class Ui_MainWindow(object):
             root = ET.Element('annotation')
             filename = ET.SubElement(root, 'filename')
             filename.text = self.full_pic_path.split('/')[-1]
+
+            print(LabelPictureSize)
+            width = ET.SubElement(root, 'width')
+            h = self.LabelPicture.pixmap().height()
+            w = self.LabelPicture.pixmap().width()
+            width.text = str(w)
+            height = ET.SubElement(root, 'height')
+            height.text = str(h)
             # polygonDict = {}   
             for i in range(self.tableWidget.rowCount()):
                 object = ET.SubElement(root, 'object')
