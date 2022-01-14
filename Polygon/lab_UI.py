@@ -485,14 +485,20 @@ class Ui_MainWindow(object):
             filename = ET.SubElement(root, 'filename')
             filename.text = self.full_pic_path.split('/')[-1]
 
-            print(LabelPictureSize)
+            # print(LabelPictureSize)
             width = ET.SubElement(root, 'width')
-            h = self.LabelPicture.pixmap().height()
             w = self.LabelPicture.pixmap().width()
-            width.text = str(w)
+            width.text = str(int(w))
             height = ET.SubElement(root, 'height')
-            height.text = str(h)
-            # polygonDict = {}   
+            h = self.LabelPicture.pixmap().height()
+            height.text = str(int(h))
+            # polygonDict = {}
+            # print("SAVE H  ",self.image.shape[0])
+            # print("SAVE W  ",self.image.shape[1])
+            check_h = self.image.shape[0]
+            check_w = self.image.shape[1]
+            hw_error = False
+            
             for i in range(self.tableWidget.rowCount()):
                 object = ET.SubElement(root, 'object')
                 
@@ -503,29 +509,40 @@ class Ui_MainWindow(object):
                 polygon = ET.SubElement(object, 'polygon')
                 # print('Attr:', self.attribute)
                 for pos_x, pos_y in self.attribute[i]:  # 第 i 個 row (polygon)
-                    pt = ET.SubElement(polygon, 'pt')
-                    x = ET.SubElement(pt, 'x')
-                    x.text = str(pos_x * self.resize)
-                    y = ET.SubElement(pt, 'y')
-                    y.text = str(pos_y * self.resize)
+                    if int(pos_x * self.resize) > check_w or int(pos_y * self.resize) > check_h:
+                        hw_error = True
+                        break
+                    else:
+                        pt = ET.SubElement(polygon, 'pt')
+                        x = ET.SubElement(pt, 'x')
+                        x.text = str(int(pos_x * self.resize))
+                        y = ET.SubElement(pt, 'y')
+                        y.text = str(int(pos_y * self.resize))
                 
                 # polygonDict[name.text] = np.array(self.attribute[i]) * self.resize
 
             # np.save(self.full_pic_path.rsplit('.')[0] + '_dectect.npy', polygonDict) 
             # print(f'save transfrom matrix to: [{self.full_pic_path.rsplit(".")[0] + "_dectect.npy"}]')
             
-            tree = ET.ElementTree(root)
-            tree.write(self.full_xml_path, encoding="utf-8")
-            print(f'save data to: [{self.full_xml_path}]')
+            # 檢查是否有超過圖片長寬的點
+            if not hw_error:
+                tree = ET.ElementTree(root)
+                tree.write(self.full_xml_path, encoding="utf-8")
+                print(f'save data to: [{self.full_xml_path}]')
 
-            if self.matrix_pix_to_cm is not None:
-                np.save(self.full_pic_path.rsplit('.')[0] + '.npy', self.matrix_pix_to_cm)
-                print(f'save transfrom matrix to: [{self.full_pic_path.rsplit(".")[0] + ".npy"}]')
+                if self.matrix_pix_to_cm is not None:
+                    np.save(self.full_pic_path.rsplit('.')[0] + '.npy', self.matrix_pix_to_cm)
+                    print(f'save transfrom matrix to: [{self.full_pic_path.rsplit(".")[0] + ".npy"}]')
 
-            self.save_xml_notice = QMessageBox.information(
-                self.centralwidget, 'Save Notice',
-                'You have saved the information about the picture!',
-                QMessageBox.Ok)
+                self.save_xml_notice = QMessageBox.information(
+                    self.centralwidget, 'Save Notice',
+                    'You have saved the information about the picture!',
+                    QMessageBox.Ok)
+            else:
+                self.save_xml_notice = QMessageBox.warning(
+                    self.centralwidget, 'Save Error',
+                    'An error occurred while saving because the marker point exceeded the image size!',
+                    QMessageBox.Ok)
 
         # camera Calibration 畫面
         elif self.MainWindow.centralWidget().objectName() == 'camerawidget':

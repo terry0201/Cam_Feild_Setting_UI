@@ -18,163 +18,7 @@ for_saving=None
 cv_img = np.array([None])
 Cali_Fixed_Param = None
 Is_Finish_Alibrate = False
-# class calithread(QThread):
-#     print_error=Signal(str)
-#     finish_cali=Signal()
-#     def __init__(self):
-#         super().__init__()
-        
-#     def run(self):
-#         self.objpoints = []
-#         self.imgpoints = []
-#         self.counter=0
-#         self.frame_count=20
-#         # self.frame_count=3
-#         # self.frame_count=3
-#         self.slide_threshold=10
-#         self.corner_x = 7
-#         self.corner_y = 7
-#         self.objp = np.zeros((self.corner_x*self.corner_y, 3), np.float32)
-#         self.objp[:, :2] = np.mgrid[0:self.corner_x, 0:self.corner_y].T.reshape(-1, 2)
-#         self._width=0
-#         self._height=0
-#         self.doCali = False
-#         # self.print_error.emit("A frame will be captured in three seconds.")
-        
-#         # self.timer = QTimer()
-#         # self.timer.timeout.connect(self.calibrate_test)
-#         # self.calibrate()
-#         # self.sec = QTime.currentTime().second()
-#         # TODO: 開兩個thread 那校正後的新的圖片要怎麼接過去另一個thread?=> signal/emit, 還是可能之後不是回傳圖片?? => 參考src
-#         # TODO: 是直接把校正的照片用另一個thred更新的方式重新打在這個thread? 還是img已經會做了? => 直接改img和cv_img會噴錯 
-#         # TODO: 但原本帶入的global img因為是變成QImage 所以先用cv_img接過去 => 測試目前的接收的圖片都是對的 持續移動相機會有不同的陣列值
-#         # TODO: 跑完後會回傳甚麼東西? src:https://docs.opencv.org/4.5.1/dc/dbb/tutorial_py_calibration.html
-#         # TODO: 用emit的方式回傳cv2校正後的每張xywh? 要預設每張圖片都有經過xywh(global value)?
-#         start_time = QTime.currentTime().second() % 60
-#         self.print_error.emit("A frame will be captured in three seconds.")
-#         self.running = True
-#         while(self.running):    #using infinite loop with timer to do the realtime capture and calibrate
-#             cur_time = QTime.currentTime().second()% 60
-#             # print(cur_time)
-#             # print(start_time)
-#             # print(cur_time-start_time)
-#             global cv_img
-#             calibrate_img = cv_img
-#             t = ""
-#             td = 0
-#             if cur_time > start_time: td = cur_time - start_time
-#             else: td = start_time - cur_time
-#             if td > 3:
-#                 gray = cv2.cvtColor(calibrate_img, cv2.COLOR_BGR2GRAY)
-#                 # print(gray)
-#                 r, corners = cv2.findChessboardCorners(gray, (self.corner_x, self.corner_y), None)
-#                 # print(r)
-#                 self.counter += 1
-#                 print(self.counter)
-#                 if r == True: #chessboard is found in this frame
-#                     print("capture success and chessboard is founded, {}/{}".format(self.counter,self.frame_count))
-#                     t += "capture success and chessboard is founded, {}/{}".format(self.counter,self.frame_count)
-#                     self.objpoints.append(self.objp)
-#                     self.imgpoints.append(corners)  
-#                     #above part for finding chessboard
-#                     self._width=calibrate_img.shape[1]
-#                     self._height=calibrate_img.shape[0]
-#                     img_size = (self._width, self._height)
 
-#                     if self.counter>self.slide_threshold:  #choosing when to do the sliding window
-#                         # ret, mtx, dist, rvecs, tvecs, imgpoints, objpoints, err = sliding_window_calibrate(objpoints, imgpoints, img_size, counter, frame_count)
-#                         self.err, self.imgpoints, self.objpoints = calculate_the_worst(self.objpoints, self.imgpoints, img_size, self.counter, self.frame_count, eliminate=False)
-
-#                     else:
-#                         # ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img_size, None, None)
-#                         # err = cal_reproject_error(imgpoints,objpoints,rvecs,tvecs,mtx,dist)
-#                         self.err, self.imgpoints, self.objpoints = calculate_the_worst(self.objpoints, self.imgpoints, img_size, self.counter, self.frame_count, eliminate=False)
-#                         pass
-
-#                     print("error:{}".format(self.err))
-#                     t += "error:{}".format(self.err)
-#                 else:
-#                     print("No chessboard is found in this frame")
-#                     t += "No chessboard is found in this frame."
-#                 print("相機資料數:",len(self.imgpoints))
-#                 print("空間資料數:",len(self.objpoints))
-#                 print('\n')
-#                 if self.counter == self.frame_count:  #meet the number of frames defined in the begining
-#                     self.print_error.emit("Finish Calibration")
-#                     self.finish_cali.emit()
-#                     break
-#                 start_time = cur_time
-#                 t += "a frame will be captured in three seconds.{}".format(self.counter)
-#                 # print("a frame will be captured in three seconds")
-#                 self.print_error.emit(t)
-
-        
-#         # self.running=True
-#         # while(self.running):
-#         #     # print("RUNNNNN")
-#         #     # print(self.sec)
-#         #     # print(QTime.currentTime().second() - self.sec)
-#         #     if self.counter != self.slide_threshold and not self.doCali:
-#         #         self.doCali = True
-#         #         print(self.doCali,"  self.counter != self.slide_threshold and not self.doCali")
-#         #         self.timer.start(3000)
-#         #     elif self.counter == self.slide_threshold:
-#         #         print("self.counter == self.slide_threshold")
-#         #         self.timer.stop()
-#         #         self.print_error.emit("Finish Calibration")
-#         #         self.finish_cali.emit()
-#         #         break
-#             # print("inwhile")
-          
-       
-    
-#     def calibrate(self):
-#         # self.timer.stop()
-#         global cv_img
-#         # global for_saving
-#         # print(cv_img)
-#         # print(for_saving)
-#         calibrate_img = cv_img
-#         gray = cv2.cvtColor(calibrate_img, cv2.COLOR_BGR2GRAY)
-#         r, corners = cv2.findChessboardCorners(gray, (self.corner_x, self.corner_y), None)
-#         print(r)
-#         t=""
-#         if(r==True):
-#             self.counter += 1
-#             t+=("capture success and chessboard is founded, {}/{}".format(self.counter,self.frame_count))
-#             self.objpoints.append(self.objp)
-#             self.imgpoints.append(corners)
-#             #above part for finding chessboard
-#             self._width=calibrate_img.shape[1]
-#             self._height=calibrate_img.shape[0]
-#             img_size = (self._width, self._height)
-#             if self.counter>self.slide_threshold:  #choosing when to do the sliding window
-#                 ret, mtx, dist, rvecs, tvecs, self.imgpoints, self.objpoints, err = sliding_window_calibrate(self.objpoints, self.imgpoints, img_size, self.counter, self.frame_count)
-#             else:
-#                 ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(self.objpoints, self.imgpoints, img_size, None, None)
-#                 err = cal_reproject_error(self.imgpoints,self.objpoints,rvecs,tvecs,mtx,dist)
-#             t+=("error:{}".format(err))
-#         else:
-#             t+=("No chessboard is found in this frame")
-#         t+=("\nA frame will be captured in three seconds")
-#         self.print_error.emit(t)
-#         # self.timer.start(3000)
-#         print("A frame will be captured in three seconds")
-#         print(self.counter)
-
-#         # self.doCali = False
-
-#         if self.counter != self.slide_threshold:
-#             print("Set timer")
-#             self.timer.start(3000)
-#         else: 
-#             self.timer.stop()
-#             self.print_error.emit("Finish Calibration")
-#             self.finish_cali.emit()
-   
-#     def stop(self):
-#         self.running=False
-#         self.wait()
         
 class VideoThread(QThread):
     change_pixmap_signal = Signal(np.ndarray)
@@ -426,10 +270,7 @@ class CameraWidget(QWidget):
         self.thread.sstart()
         self.CameraOpening=True
         self.start_cali()
-        # self.label.setText("Start Calibrating...")
-        # self.timer.start(1000)
-        # self.label.setText("Find pickle of this camera if you have...")
-        # self.timer.start(3000)
+
 
     def connect_error(self):
         self.MainWindow.ui.ShowErrorToStatusbar('[ERROR] Connect error')
@@ -442,20 +283,10 @@ class CameraWidget(QWidget):
         self.ButtonOpenPickle.hide()
         self.ButtonStartCalibration.hide()
         self.timer.stop()
-        # if address or class_picke_name == file_pickle_name:
-        #     Is_Finish_Alibrate = True
 
-        # Cali_Fixed_Param = open_camera_pickle("0")
-        # Is_Finish_Alibrate = True
-        # if(Is_Finish_Alibrate):
         self.button_change()
         self.change_word("Finish!")
 
-        # self.label.setText("Not found!\nA frame will be captured in three seconds")
-        
-        # self.cali_thread.start()
-        # self.cali_thread.print_error.connect(self.change_word)
-        # self.cali_thread.finish_cali.connect(self.button_change)
         
         
     def button_change(self):
@@ -488,7 +319,6 @@ class CameraWidget(QWidget):
     def skip(self):
         from lab_UI import resetLabelPictureSize
         resetLabelPictureSize(self.LabelCamera.size().toTuple())
-        # TODO: self.cali_thread stop
         if(self.status=="Connect"):
            self.MainWindow.setCentralWidget(self.centralwidget)
            self.MainWindow.ui.menubar.setEnabled(True)
