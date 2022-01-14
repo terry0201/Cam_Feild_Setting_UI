@@ -11,20 +11,32 @@ an UI that can do
 
 ## GUI
 > `python lab_main.py`
-- 完成: 讀檔、存檔、新增 | 編輯 | 刪除 多邊形、transform、多邊形 <-> table 雙向 Highlight
-- TODO: Camera 相關功能
+- 場域繪製、影像校正相關GUI
+
+
+
 
 ### exe
-> `pip install pyinstaller`
-> `pyinstaller -F lab_main.py [-n <Name> -c --icon=<Name.ico>]`
+- 如何打包成exe
+    1. 首先先在環境中安裝 `pip install pyinstaller`
+    2. cd Cam_Feild_Setting_UI/Polygon
+    3. 接著下以下的指令
+        - `pyinstaller -F lab_main.py [-n <Name> -c --icon=<Name.ico>]`
+        - e.g., pyinstaller -F lab_main.py -n CameraFeild0114 -c --icon=camera.ico
+            - CameraFeild0114為輸出的exe的名稱
+            - camera.ico為exe的圖示
+    4. 接著到Cam_Feild_Setting_UI/Polygon/dist這個資料夾， exe就在這邊
+    5. 把它放到 Cam_Feild_Setting_UI/Polygon/exe裡面，就可以成功開啟
+
 - Structure
 ```
 Root/Polygon/exe/
-                CameraFeild1014.exe     # 程式執行檔
+                CameraFeild.exe     # 程式執行檔
                 Polygon
-                ├── name.txt            # 建立多邊形name的列表
-                ├── address.txt         # 建立相機address的列表
-                ├── sound               # 使用到的音效
+                ├── name.txt        # 建立多邊形name的列表
+                ├── address.txt     # 建立相機address的列表
+                ├── config.txt      # 相機config之參數調整
+                ├── sound           # 使用到的音效
                 │   ├ clicked.wav 
                 │   ├ error.wav
 ```
