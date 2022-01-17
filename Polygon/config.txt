@@ -1,0 +1,6 @@
+hyperparam_framecount 20
+hyperparam_framecheck 10
+hyperparam_block 5
+hyperparam_cover 0.3
+hyperparam_error 2
+hyperparam_space 2

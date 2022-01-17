@@ -9,14 +9,29 @@ import time
 import os
 
 
-def capture(frame_count=20, input_address=0):        #frame_counter=> how many frames in total
+def capture(input_address=0):
+    config = {}
+    file = open("Polygon/config.txt", 'r')
+    for line in file.readlines():
+        line = line.strip()
+        key = line.split(' ')[0]
+        value = line.split(' ')[1]
+        config[key] = value
+    file.close()
+    hyperparam_framecount = int(config['hyperparam_framecount'])    #最多拍20張
+    hyperparam_framecheck = int(config['hyperparam_framecheck'])    #最少拍10張
+    hyperparam_block = int(config['hyperparam_block'])              #長邊5格
+    hyperparam_cover = float(config['hyperparam_cover'])            #覆蓋率baseline 0.3
+    hyperparam_error = float(config['hyperparam_error'])            #兩倍標準差
+    hyperparam_space = float(config['hyperparam_space'])            #覆蓋率精度 2
     
     #type-in file name
     # timetup = time.localtime()
     # file_name = time.strftime('%Y%m%d%H%M%S', timetup)
     
     os.makedirs('Polygon/calibration_parameter/', exist_ok=True)
-    
+
+    frame_count = hyperparam_framecount         #frame_counter=> how many frames in total
     counter=0
     corner_x = 7   # pattern is 7*7
     corner_y = 7
@@ -37,12 +52,12 @@ def capture(frame_count=20, input_address=0):        #frame_counter=> how many f
         ret, frame = cap.read()
         if setting == True and cur_time-start_time < 2.9:
             text = "{}".format(int(round( 3-(cur_time-start_time),0)) )
-            cv2.putText(frame, text, (285, 270), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 255), 2, cv2.LINE_AA)
-            draw_block(frame, block, block_coverage)
+            draw_block(frame, block, block_coverage, hyperparam_cover)                                              #格子
+            cv2.putText(frame, text, (285, 270), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 255), 2, cv2.LINE_AA)        #倒數
         if setting == False:
-            cv2.putText(frame, "setting", (260, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 255), 1, cv2.LINE_AA)
+            cv2.putText(frame, "setting", (80, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 255), 1, cv2.LINE_AA)
         cv2.imshow('frame', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord('q'): # 若按下 q 鍵則離開迴圈
             cv2.destroyAllWindows()
             break
         if cur_time-start_time > 3:
@@ -55,13 +70,13 @@ def capture(frame_count=20, input_address=0):        #frame_counter=> how many f
                         _width = frame.shape[1]
                         _height = frame.shape[0]
                         img_size = (_width, _height)
-                        side_num1, side_num2, block_length1, block_length2, block = show_block(_width, _height)
+                        side_num1, side_num2, block_length1, block_length2, block = show_block(_width, _height, hyperparam_block)
                         print("(width, height) = ({}, {})".format(_width, _height))
                         block_num = len(block)
                         print("side length of block = {} x {}".format(block_length1, block_length2))
                         print("number of block = {} x {} = {}".format(side_num1, side_num2, block_num))
                         block_coverage = [0]*block_num   
-                        pixel = _pixel(0, _width, 0, _height)
+                        pixel = _pixel(0, _width, 0, _height, hyperparam_space)
                         init_pixel_number = len(pixel) 
                         print("number of pixel = {}".format(init_pixel_number))  # pixel_width*pixel_height=len(pixel)
                         initial_pixel = []
@@ -83,20 +98,20 @@ def capture(frame_count=20, input_address=0):        #frame_counter=> how many f
                         = calculate_parameters(objpoints, imgpoints, img_size, counter-pic_del, frame_count, eliminate=False)
 
                     p_imgpoints = parse_imgpoints(imgpoints)    #resize from (n, 49, 1, 2) <class 'list'> to (49n, 2) <class 'list'>
-                    uncovered_pixel, discard = pick_corner_find_uncovered_pixel(p_imgpoints, counter, pic_del, pixel) 
+                    uncovered_pixel, discard = pick_corner_find_uncovered_pixel(p_imgpoints, counter, pic_del, pixel)
                     del_history.append(discard)
 
                     print("error for each frame:{}".format(all_error_tmp))
                     error_avg = np.average(all_error_tmp)
                     error_std = np.std(all_error_tmp)
-                    print("average:", error_avg)     
+                    print("average:", error_avg)
                     print("standard:", error_std)
                     pixel = uncovered_pixel
 
-                    if counter == 10:
+                    if counter == hyperparam_framecheck:
                         print("check")
                         for i in range(counter-1, -1, -1):
-                            if all_error_tmp[i] >= error_avg + 2*error_std:
+                            if all_error_tmp[i] >= error_avg + hyperparam_error*error_std:
                                 imgpoints.pop(i)
                                 objpoints.pop(i)
                                 all_error_tmp.pop(i)
@@ -106,8 +121,8 @@ def capture(frame_count=20, input_address=0):        #frame_counter=> how many f
                                 print("delete")
                                 pic_del += 1
                         print("error for each frame (deleted):{}".format(all_error_tmp))
-                    if counter >10:
-                        if all_error_tmp[-1] >= error_avg + 2*error_std:
+                    if counter > hyperparam_framecheck:
+                        if all_error_tmp[-1] >= error_avg + hyperparam_error*error_std:
                             imgpoints.pop(-1)
                             objpoints.pop(-1)
                             all_error_tmp.pop(-1)
@@ -128,13 +143,13 @@ def capture(frame_count=20, input_address=0):        #frame_counter=> how many f
 
                     qualify = 0
                     for i in range(len(block_coverage)):
-                        if block_coverage[i] > 0.3:
+                        if block_coverage[i] > hyperparam_cover:
                             qualify += 1
-                    print("block>0.3:", qualify, "/", len(block)) 
-                    if counter >= 10:
+                    print("block>{}:{}/{}".format(hyperparam_cover, qualify, len(block))) 
+                    if counter >= hyperparam_framecheck:
                         if qualify == len(block_coverage):
                             print("\n\n end \n\n")
-                            cap.release()       #release the camera
+                            cap.release()           #release the camera
                             cv2.destroyAllWindows()
                             break
                     if counter == frame_count:  #meet the number of frames defined in the begining
@@ -221,8 +236,7 @@ def calculate_parameters(objpoints, imgpoints, img_size, cur_count, total, elimi
     return imgpoints[:], objpoints[:], packed_tmp, ret_tmp, mtx_tmp, dist_tmp, rvecs_tmp, tvecs_tmp, all_error_tmp, mean_error_tmp
 
 
-def _pixel(_wid0th, _width, _hei0ght, _height):
-    spacing = 2
+def _pixel(_wid0th, _width, _hei0ght, _height, spacing):
     pixel_width = math.floor(((_width-_wid0th)+spacing/2)/spacing) 
     pixel_height = math.floor(((_height-_hei0ght)+spacing/2)/spacing)
     pixel=[]
@@ -259,10 +273,9 @@ def pick_corner_find_uncovered_pixel(p_imgpoints, counter, t, pixel):
             
     return new_pixel, save_discard      #這裡的new_pixel為還沒被任何一張覆蓋的pixel, save_discard為這張照片所覆蓋的pixel
 
-def show_block(_width, _height):
-    side_num1 = 4                                      #長邊(預設x)切成幾塊
+def show_block(_width, _height, side_num1):             #side_num1 = 長邊(預設x)切成幾塊
     block_length1 = max(_width, _height)//side_num1 
-    side_num2 = min(_width, _height)//block_length1+1  #短邊(預設y)切成幾塊
+    side_num2 = min(_width, _height)//block_length1+1   #短邊(預設y)切成幾塊
     block_length2 = min(_width, _height)//side_num2
     if _width < _height:
         hold_num = side_num1
@@ -296,53 +309,46 @@ def scatter_hist(imgpoints, _width, _height, inverse=True): #draw the scatter gr
         _x, _y = item
         x.append(_x)
         y.append(_y)
-
     left, width = 0.1, 0.65
     bottom, height = 0.1, 0.65
     spacing = 0.005
-
     rect_scatter = [left, bottom, width, height]
     rect_histx = [left, bottom+height+spacing, width, 0.2]
     rect_histy = [left+width+spacing, bottom, 0.2, height]
-
     # start with a square Figure
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_axes(rect_scatter,xlim=(0, width),ylim=(0, height))     #axe is a sub-area in figure.
     ax_histx = fig.add_axes(rect_histx, sharex=ax)
     ax_histy = fig.add_axes(rect_histy, sharey=ax)
-
     ax_histx.tick_params(axis="x", labelbottom=False)
     ax_histy.tick_params(axis="y", labelleft=False)
-
     ax.set_xlim(0, _width)
     ax.set_ylim(0, _height)
     if inverse:     #due to the different coordinate between images and 2-D coordinate(mainly on Y axis), we have to inverse y axis to get the correct result
         ax.invert_yaxis()
     # the scatter plot:
     ax.scatter(x, y)
-
     # now determine nice limits by hand:
     binwidth = 0.25
     xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
     lim = (int(xymax/binwidth)+1) * binwidth
-
     bins = np.arange(-lim, lim + binwidth, binwidth)
     ax_histx.hist(x, bins=bins)
     ax_histy.hist(y, bins=bins, orientation='horizontal')
     plt.show()
 
-def draw_block(frame, block, block_cover):
+def draw_block(frame, block, block_cover, threshold):
     for i in range(len(block)):
-        if block_cover[i] < 0.3:
-            cv2.rectangle(frame, (block[i][0], block[i][3]), (block[i][1], block[i][2]), color = (0, 0, 255), thickness = 1)
-        else:
+        if block_cover[i] >= threshold:     #green
             cv2.rectangle(frame, (block[i][0], block[i][3]), (block[i][1], block[i][2]), color = (0, 255, 0), thickness = 2)
+    for i in range(len(block)):
+        if block_cover[i] < threshold:      #red
+            cv2.rectangle(frame, (block[i][0], block[i][3]), (block[i][1], block[i][2]), color = (0, 0, 255), thickness = 2)
 
 
 def set_font_size(dpi, height, width):
     """
     In order to perform different font size under different resolutions and DPIs.
-
     Params : 
         [float] dpi : Zoom level. The user has set in the os preferences.
         [int] height : User-set resolution height. The user has set in the os preferences.
@@ -350,7 +356,6 @@ def set_font_size(dpi, height, width):
         
     Return :
         [int] basicSize : The sys basic font size.
-
     """
     print("Set font size...")
     basicSize = 20
@@ -372,7 +377,6 @@ def set_font_size(dpi, height, width):
 def set_pyplot_marker_size(markerSize, args, fig, ax):
     """
     Set marker size after scrolling.
-
     Params : 
         [float] markerSize : Zoom level. The user has set in the os preferences.
         [dict] args : The pyplot-related data saved at the beginning.
